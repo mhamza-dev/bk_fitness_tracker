@@ -1,11 +1,12 @@
 import React from 'react';
-import AppNavigator from './src/navigation/AppNavigator';
+// import AuthenticatedNavigator from './src/navigation/AuthenticatedNavigator.js';
+import UnauthenticatedNavigator from './src/navigation/UnauthenticatedNavigator.js';
 import { NavigationContainer } from '@react-navigation/native';
 
 export default function App() {
   return (
     <NavigationContainer>
-      <AppNavigator />
+      <UnauthenticatedNavigator />
     </NavigationContainer>
   );
 }
