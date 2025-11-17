@@ -3,66 +3,40 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Accelerometer } from 'expo-sensors';
-import { Constants } from 'expo-constants';
 import LottieView from 'lottie-react-native';
+import stepCounterService from './service/stepCounter';
 
 const CALORIES_PER_STEP = 0.05;
-const STEP_DETECTION_THRESHOLD = 0.1;
-const INACTIVITY_TIMEOUT = 1500; // 1.5 seconds
 
 
 export default function App() {
   const [stepCount, setStepCount] = useState(0);
   const [isTracking, setIsTracking] = useState(false);
-  const [lastY, setLastY] = useState(0);
-  const [lastTimestamp, setLastTimestamp] = useState(0);
+
   const animationRefRunning = useRef(null);
   const animationRefSitting = useRef(null);
-  const timeoutRef = useRef(null);
-  const lastStepTimeRef = useRef(0);
 
   useEffect(() => {
     let subscription;
 
+    // Set up step counter service callbacks
+    stepCounterService.setOnStepDetected(() => {
+      setStepCount(prev => prev + 1);
+    });
+
+    stepCounterService.setOnTrackingStateChanged((tracking) => {
+      setIsTracking(tracking);
+    });
+
     Accelerometer.isAvailableAsync().then((result) => {
       if (result) {
+        // Set update interval for accelerometer (optional, but recommended)
+        Accelerometer.setUpdateInterval(100); // 100ms = 10Hz
+
         subscription = Accelerometer.addListener((acceleration) => {
-          const currentTimestamp = new Date().getTime();
-
-          // Detect step
-          if (Math.abs(acceleration.y - lastY) > STEP_DETECTION_THRESHOLD && (currentTimestamp - lastTimestamp > 800)) {
-            setIsTracking(true);
-            setLastY(acceleration.y);
-            setLastTimestamp(currentTimestamp);
-            setStepCount(prev => prev + 1);
-            lastStepTimeRef.current = currentTimestamp;
-
-            // Clear any existing timeout
-            if (timeoutRef.current) {
-              clearTimeout(timeoutRef.current);
-              timeoutRef.current = null;
-            }
-
-            // Reset isTracking to false after 1.5 seconds of no movement
-            // This timeout gets reset every time a step is detected
-            timeoutRef.current = setTimeout(() => {
-              setIsTracking(false);
-              timeoutRef.current = null;
-            }, INACTIVITY_TIMEOUT);
-          } else if (isTracking && lastStepTimeRef.current > 0) {
-            // Check if enough time has passed since last step
-            const timeSinceLastStep = currentTimestamp - lastStepTimeRef.current;
-            if (timeSinceLastStep >= INACTIVITY_TIMEOUT) {
-              // Clear any existing timeout
-              if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-              }
-              // Switch to sitting immediately
-              setIsTracking(false);
-              timeoutRef.current = null;
-            }
-          }
-        })
+          // Process acceleration data through step counter service
+          stepCounterService.processAcceleration(acceleration);
+        });
       }
     });
 
@@ -70,15 +44,14 @@ export default function App() {
       if (subscription) {
         subscription.remove();
       }
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-    }
-  }, [lastY, lastTimestamp, isTracking]);
+      stepCounterService.cleanup();
+    };
+  }, []); // Empty dependency array - only run once on mount
 
   const handleResetCounting = () => {
     setStepCount(0);
+    stepCounterService.reset();
+    setIsTracking(false);
   }
 
   const calculation = {
