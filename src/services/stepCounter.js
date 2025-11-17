@@ -8,7 +8,6 @@ const MAX_STEP_INTERVAL = 1100; // Maximum time between steps (ms)
 const INACTIVITY_TIMEOUT = 4000; // Increased inactivity detection time (4s)
 const PEAK_DETECTION_WINDOW = 5; // Readings to check for local max/min
 const STEP_HISTORY_SIZE = 10; // Increased history for better rhythm analysis
-const MIN_CONSISTENT_STEPS = 4; // Steps needed to establish a trusted pattern
 
 // --- FILTER & THRESHOLD TUNING FOR Leniency & Precision ---
 const GRAVITY_ALPHA = 0.05; // Very LOW alpha for slow, stable gravity estimation (Kalman approximation)
@@ -142,16 +141,19 @@ class StepCounterService {
 
     /**
      * Detect if current reading is a valley (local minimum) and update the noise floor history.
+     * Checks if the current magnitude is a local minimum in the recent history.
      */
     detectValley(magnitude) {
-        if (this.accelerationHistory.length < PEAK_DETECTION_WINDOW) return false;
+        // Need at least PEAK_DETECTION_WINDOW samples in history (excluding current)
+        if (this.accelerationHistory.length < PEAK_DETECTION_WINDOW - 1) return false;
 
-        const windowSize = Math.min(this.accelerationHistory.length, PEAK_DETECTION_WINDOW);
+        // Get recent history (excluding current magnitude which hasn't been added yet)
+        const windowSize = Math.min(this.accelerationHistory.length, PEAK_DETECTION_WINDOW - 1);
         const recentHistory = this.accelerationHistory.slice(-windowSize);
 
-        // Is it the minimum in the window?
-        const minInWindow = Math.min(...recentHistory);
-        const isLocalMin = magnitude === minInWindow && magnitude === recentHistory[recentHistory.length - 1];
+        // Check if current magnitude is less than all values in the window
+        // This indicates a local minimum
+        const isLocalMin = recentHistory.every(value => magnitude < value);
 
         if (isLocalMin) {
             this.recentValleys.push(magnitude);
@@ -189,8 +191,10 @@ class StepCounterService {
         // Max allowed deviation for high confidence (e.g., 50%)
         const maxAllowedDeviation = 0.5;
 
-        // Confidence calculation based on how close to median
-        let confidence = 1.0 - Math.min(maxAllowedDeviation, normalizedDeviation / maxAllowedDeviation);
+        // Confidence calculation: 1.0 when deviation is 0, decreases linearly to 0.1 at maxAllowedDeviation
+        // Clamp normalizedDeviation to maxAllowedDeviation for calculation
+        const clampedDeviation = Math.min(normalizedDeviation, maxAllowedDeviation);
+        let confidence = 1.0 - (clampedDeviation / maxAllowedDeviation) * 0.9; // Scale from 1.0 to 0.1
 
         return Math.max(0.1, Math.min(1.0, confidence));
     }
@@ -232,24 +236,26 @@ class StepCounterService {
         const timeSinceLastStep = this.lastStepTime > 0
             ? currentTimestamp - this.lastStepTime
             : MAX_STEP_INTERVAL; // For first step, use max interval to allow it
-        const previousMagnitude = this.lastAccelerationMagnitude;
-
-        // Add current magnitude to history
-        this.accelerationHistory.push(magnitude);
-        if (this.accelerationHistory.length > 20) {
-            this.accelerationHistory.shift();
-        }
 
         // 4. Detect Valley (tracks noise floor and updates adaptive threshold)
+        // Check BEFORE adding to history for proper local minimum detection
         this.detectValley(magnitude);
         this.updateAdaptiveThreshold();
 
         // 5. Detect Peak Conditions
+        // Check if current magnitude is a local maximum BEFORE adding to history
         let isLocalMax = false;
-        if (this.accelerationHistory.length >= PEAK_DETECTION_WINDOW) {
-            const recentHistory = this.accelerationHistory.slice(-PEAK_DETECTION_WINDOW);
-            const maxInWindow = Math.max(...recentHistory);
-            isLocalMax = magnitude === maxInWindow && magnitude === recentHistory[recentHistory.length - 1];
+        if (this.accelerationHistory.length >= PEAK_DETECTION_WINDOW - 1) {
+            // Get recent history (excluding current magnitude)
+            const recentHistory = this.accelerationHistory.slice(-(PEAK_DETECTION_WINDOW - 1));
+            // Current magnitude is a local max if it's greater than all values in the window
+            isLocalMax = recentHistory.every(value => magnitude > value);
+        }
+
+        // Add current magnitude to history AFTER peak/valley detection
+        this.accelerationHistory.push(magnitude);
+        if (this.accelerationHistory.length > 20) {
+            this.accelerationHistory.shift();
         }
 
         const isSignificantMovement = magnitude > this.adaptiveThreshold;
