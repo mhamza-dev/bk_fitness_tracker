@@ -419,6 +419,132 @@ export const weightAPI = {
     },
 };
 
+/**
+ * Posts API
+ */
+export const postsAPI = {
+    getFeed: async (page = 1, limit = 20) => {
+        return await apiClient.get('/posts/feed', {
+            params: { page, limit },
+        });
+    },
+
+    getUserPosts: async (userId, page = 1, limit = 20) => {
+        return await apiClient.get(`/posts/user/${userId}`, {
+            params: { page, limit },
+        });
+    },
+
+    getPostById: async (postId) => {
+        return await apiClient.get(`/posts/${postId}`);
+    },
+
+    createPost: async (postData) => {
+        // Handle FormData for image uploads
+        const config = {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        };
+        return await apiClient.post('/posts', postData, config);
+    },
+
+    updatePost: async (postId, updateData) => {
+        return await apiClient.put(`/posts/${postId}`, updateData);
+    },
+
+    deletePost: async (postId) => {
+        return await apiClient.delete(`/posts/${postId}`);
+    },
+};
+
+/**
+ * Comments API
+ */
+export const commentsAPI = {
+    getPostComments: async (postId, page = 1, limit = 50) => {
+        return await apiClient.get(`/comments/post/${postId}`, {
+            params: { page, limit },
+        });
+    },
+
+    getCommentReplies: async (commentId, page = 1, limit = 20) => {
+        return await apiClient.get(`/comments/${commentId}/replies`, {
+            params: { page, limit },
+        });
+    },
+
+    createComment: async (commentData) => {
+        return await apiClient.post('/comments', commentData);
+    },
+
+    updateComment: async (commentId, updateData) => {
+        return await apiClient.put(`/comments/${commentId}`, updateData);
+    },
+
+    deleteComment: async (commentId) => {
+        return await apiClient.delete(`/comments/${commentId}`);
+    },
+};
+
+/**
+ * Likes API
+ */
+export const likesAPI = {
+    getPostLikes: async (postId) => {
+        return await apiClient.get(`/likes/post/${postId}`);
+    },
+
+    likePost: async (postId) => {
+        return await apiClient.post('/likes', { postId });
+    },
+
+    likeComment: async (commentId) => {
+        return await apiClient.post('/likes', { commentId });
+    },
+
+    unlikePost: async (postId) => {
+        return await apiClient.delete('/likes', {
+            params: { postId },
+        });
+    },
+
+    unlikeComment: async (commentId) => {
+        return await apiClient.delete('/likes', {
+            params: { commentId },
+        });
+    },
+};
+
+/**
+ * Follow API
+ */
+export const followAPI = {
+    getFollowStatus: async (userId) => {
+        return await apiClient.get(`/follow/status/${userId}`);
+    },
+
+    getFollowers: async (userId, page = 1, limit = 20) => {
+        return await apiClient.get(`/follow/followers/${userId}`, {
+            params: { page, limit },
+        });
+    },
+
+    getFollowing: async (userId, page = 1, limit = 20) => {
+        return await apiClient.get(`/follow/following/${userId}`, {
+            params: { page, limit },
+        });
+    },
+
+    followUser: async (userId) => {
+        return await apiClient.post(`/follow/${userId}`);
+    },
+
+    unfollowUser: async (userId) => {
+        return await apiClient.delete(`/follow/${userId}`);
+    },
+};
+
 export default {
     apiClient,
     getAuthToken,
@@ -431,4 +557,8 @@ export default {
     mealAPI,
     fitnessDataAPI,
     weightAPI,
+    postsAPI,
+    commentsAPI,
+    likesAPI,
+    followAPI,
 };

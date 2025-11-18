@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import StepTrackerScreen from '../screens/StepTrackerScreen';
-import StatsScreen from '../screens/StatsScreen';
+import FeedScreen from '../screens/FeedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import HeaderLogo from '../components/HeaderLogo';
 import { Colors, Sizes, FontWeight } from '../styles';
@@ -71,12 +71,12 @@ const AuthenticatedNavigator = () => {
                 }}
             />
             <Tab.Screen
-                name="Stats"
-                component={StatsScreen}
+                name="Feed"
+                component={FeedScreen}
                 options={{
-                    title: 'Stats',
+                    title: 'Feed',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="stats-chart" size={size || Sizes.tabBar.iconSize} color={color} />
+                        <Ionicons name="grid" size={size || Sizes.tabBar.iconSize} color={color} />
                     ),
                 }}
             />
