@@ -98,6 +98,12 @@ export const Sizes = {
     iconSize: 24,
   },
 
+  // Bottom bar
+  bottomBar: {
+    height: 80,
+    iconSize: 24,
+  },
+
   // Animation sizes
   animation: {
     small: 150,

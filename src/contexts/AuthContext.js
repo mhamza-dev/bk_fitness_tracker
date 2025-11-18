@@ -4,8 +4,7 @@
  */
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { getAuthToken, removeAuthToken, setAuthToken } from '../services/api.js';
-import { getCurrentUser, logoutUser } from '../services/userService.js';
+import { getAuthToken, removeAuthToken, setAuthToken, authAPI } from '../services/api.js';
 
 const AuthContext = createContext(null);
 
@@ -37,7 +36,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         // Verify token by fetching current user
         try {
-          const userData = await getCurrentUser();
+          const userData = await authAPI.getCurrentUser();
           setUser(userData.user || userData);
           setIsAuthenticated(true);
         } catch (error) {
@@ -91,7 +90,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // Call logout API (optional - backend may handle token invalidation)
       try {
-        await logoutUser();
+        await authAPI.logout();
       } catch (error) {
         console.error('Logout API error:', error);
         // Continue with local logout even if API fails

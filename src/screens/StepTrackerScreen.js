@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Accelerometer } from 'expo-sensors';
 import LottieView from 'lottie-react-native';
 import { stepCounterService } from '../services/index';
+import { Colors, Sizes, FontWeight, BorderRadius } from '../styles';
 
 const CALORIES_PER_STEP = 0.05;
 
@@ -99,46 +100,54 @@ export default function StepTrackerScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.background.primary,
         alignItems: 'center',
         justifyContent: 'center',
     },
     stepCountText: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 20,
+        fontSize: Sizes.fontSize.xxl,
+        fontWeight: FontWeight.bold,
+        color: Colors.text.primary,
+        marginBottom: Sizes.xl,
     },
     resetButton: {
-        marginBottom: 20,
+        marginBottom: Sizes.xl,
+        backgroundColor: Colors.primary,
+        paddingHorizontal: Sizes.xl,
+        paddingVertical: Sizes.m,
+        borderRadius: BorderRadius.button.m,
     },
     contentContainer: {
         alignItems: 'center',
         justifyContent: 'center',
+        width: '100%',
+        paddingHorizontal: Sizes.l,
     },
     resetButtonText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: 'white',
-        backgroundColor: 'blue',
-        padding: 10,
-        borderRadius: 5,
+        fontSize: Sizes.fontSize.m,
+        fontWeight: FontWeight.bold,
+        color: Colors.text.inverse,
     },
     calculationContainer: {
-        marginTop: 20,
-        padding: 20,
+        marginTop: Sizes.xl,
+        padding: Sizes.xl,
         borderWidth: 1,
-        borderColor: 'gray',
-        borderRadius: 10,
+        borderColor: Colors.border.light,
+        borderRadius: BorderRadius.card.m,
+        backgroundColor: Colors.background.secondary,
+        width: '100%',
     },
     calculationText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 10,
+        fontSize: Sizes.fontSize.m,
+        fontWeight: FontWeight.semibold,
+        marginBottom: Sizes.m,
+        color: Colors.text.primary,
     },
     animationContainer: {
         alignItems: "center",
         justifyContent: "center",
         height: 200,
+        marginBottom: Sizes.xl,
     },
     animation: {
         width: 200,

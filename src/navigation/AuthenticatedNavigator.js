@@ -17,18 +17,36 @@ const AuthenticatedNavigator = () => {
             screenOptions={{
                 headerStyle: {
                     backgroundColor: Colors.navigation.headerBackground,
+                    elevation: 0,
+                    shadowOpacity: 0,
+                    borderBottomWidth: 0,
                 },
                 headerTintColor: Colors.navigation.headerText,
                 headerTitleStyle: {
                     fontWeight: FontWeight.bold,
+                    color: Colors.navigation.headerText,
+                    fontSize: Sizes.fontSize.xl,
                 },
                 headerLeft: () => <HeaderLogo />,
+                headerLeftContainerStyle: {
+                    paddingLeft: Sizes.m,
+                },
                 tabBarActiveTintColor: Colors.navigation.tabActive,
                 tabBarInactiveTintColor: Colors.navigation.tabInactive,
                 tabBarStyle: {
-                    paddingBottom: Sizes.xs,
-                    paddingTop: Sizes.xs,
-                    height: Sizes.tabBar.height,
+                    backgroundColor: Colors.background.primary,
+                    borderTopWidth: 1,
+                    borderTopColor: Colors.border.light,
+                    paddingBottom: Sizes.s,
+                    paddingTop: Sizes.s,
+                    height: Sizes.bottomBar.height,
+                    elevation: 0,
+                    shadowOpacity: 0,
+                },
+                tabBarLabelStyle: {
+                    fontSize: Sizes.fontSize.xs,
+                    fontWeight: FontWeight.medium,
+                    marginTop: Sizes.xs,
                 },
             }}
         >

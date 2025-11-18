@@ -16,13 +16,13 @@ const HeaderLogo = ({ style, logoStyle = {} }) => {
 
 const styles = StyleSheet.create({
     container: {
-        marginLeft: Sizes.m,
         justifyContent: 'center',
         alignItems: 'center',
+        paddingLeft: Sizes.s,
     },
     logo: {
-        width: Sizes.headerLogo.width,
-        height: Sizes.headerLogo.height,
+        width: Sizes.image.xxs,
+        height: Sizes.image.xxs,
     },
 });
 

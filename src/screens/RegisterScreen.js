@@ -1,52 +1,30 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Formik } from 'formik';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../styles';
 import { Input, Button, Link, HeaderLogo } from '../components';
 import { registerSchema } from '../validations/authSchemas';
-import { authAPI } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthAPI } from '../hooks';
 
 export default function RegisterScreen({ navigation }) {
-  const [error, setError] = useState(null);
-  const { login } = useAuth();
+  const { register, loading, error: hookError } = useAuthAPI();
 
   const handleRegister = async (values, { setSubmitting, setFieldError }) => {
     try {
-      setError(null);
-
       // Remove confirmPassword before sending to API
       const { confirmPassword, ...userData } = values;
 
-      // Call registration API
-      const response = await authAPI.register(userData);
+      // Use hook which handles API call and auth context update
+      await register(userData);
 
-      // If token is returned, automatically log in the user
-      if (response.token && (response.user || response)) {
-        await login(response.user || response, response.token);
-        // Navigation will happen automatically via AuthContext
-      } else {
-        // Show success message and navigate to login
-        Alert.alert(
-          'Success',
-          'Account created successfully! Please login to continue.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                navigation.replace('Login');
-              },
-            },
-          ]
-        );
-      }
+      // If registration succeeds, hook automatically logs in if token is returned
+      // Navigation will happen automatically via AuthContext
     } catch (error) {
       console.error('Registration error:', error);
 
       // Handle specific error cases
       const errorMessage = error.message || 'Registration failed. Please try again.';
-      setError(errorMessage);
 
       // Set field errors if available
       if (error.message?.includes('email')) {
@@ -83,9 +61,9 @@ export default function RegisterScreen({ navigation }) {
           >
             {({ handleSubmit, isSubmitting }) => (
               <View style={styles.form}>
-                {error && (
+                {hookError && (
                   <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{error}</Text>
+                    <Text style={styles.errorText}>{hookError}</Text>
                   </View>
                 )}
 
@@ -135,7 +113,7 @@ export default function RegisterScreen({ navigation }) {
                   onPress={handleSubmit}
                   variant="primary"
                   size="large"
-                  loading={isSubmitting}
+                  loading={isSubmitting || loading}
                   fullWidth
                   style={styles.registerButton}
                 />

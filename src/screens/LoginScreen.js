@@ -1,39 +1,21 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Formik } from 'formik';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../styles';
 import { Input, Button, Link, HeaderLogo } from '../components';
 import { loginSchema } from '../validations/authSchemas';
-import { loginUser } from '../services/userService';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthAPI } from '../hooks';
 
 export default function LoginScreen({ navigation }) {
-  const [error, setError] = useState(null);
-  const { login } = useAuth();
+  const { login, loading, error: hookError } = useAuthAPI();
 
   const handleLogin = async (values, { setSubmitting, setFieldError }) => {
     try {
-      setError(null);
-
       console.log('Attempting login to:', process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api');
 
-      // Call login API
-      const response = await loginUser(values.email, values.password);
-
-      console.log('Login response:', response);
-
-      // Extract user data and token from response
-      // Response format could be: { user: {...}, token: "..." } or { ...userData, token: "..." }
-      const userData = response.user || (response.token ? { ...response, token: undefined } : response);
-      const token = response.token;
-
-      if (!token) {
-        throw new Error('No authentication token received');
-      }
-
-      // Update auth context
-      await login(userData, token);
+      // Use hook which handles API call and auth context update
+      await login(values.email, values.password);
 
       console.log('Login successful, auth state updated');
       // Navigation will happen automatically via AuthContext
@@ -52,8 +34,6 @@ export default function LoginScreen({ navigation }) {
       if (error.isNetworkError) {
         errorMessage = error.message;
       }
-
-      setError(errorMessage);
 
       // Set field errors if available
       if (error.message?.includes('email') || error.message?.includes('password')) {
@@ -90,9 +70,9 @@ export default function LoginScreen({ navigation }) {
           >
             {({ handleSubmit, isSubmitting }) => (
               <View style={styles.form}>
-                {error && (
+                {hookError && (
                   <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{error}</Text>
+                    <Text style={styles.errorText}>{hookError}</Text>
                   </View>
                 )}
 
@@ -131,7 +111,7 @@ export default function LoginScreen({ navigation }) {
                   onPress={handleSubmit}
                   variant="primary"
                   size="large"
-                  loading={isSubmitting}
+                  loading={isSubmitting || loading}
                   fullWidth
                   style={styles.loginButton}
                 />

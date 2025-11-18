@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors, Sizes, FontWeight, BorderRadius, Shadows } from '../styles';
 
 export default function StatsScreen() {
   return (
@@ -31,43 +32,38 @@ export default function StatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: Colors.background.primary,
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 20,
+    padding: Sizes.l,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
+    fontSize: Sizes.fontSize.xxxl,
+    fontWeight: FontWeight.bold,
+    marginBottom: Sizes.xl,
+    color: Colors.text.primary,
   },
   statCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    backgroundColor: Colors.background.secondary,
+    padding: Sizes.xl,
+    borderRadius: BorderRadius.card.m,
+    marginBottom: Sizes.l,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+    ...Shadows.small,
   },
   statLabel: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 8,
+    fontSize: Sizes.fontSize.m,
+    color: Colors.text.secondary,
+    marginBottom: Sizes.s,
   },
   statValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2196F3',
+    fontSize: Sizes.fontSize.xxxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.primary,
   },
 });
 
