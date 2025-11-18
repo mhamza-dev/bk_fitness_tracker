@@ -1,37 +1,26 @@
-import React, { useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, View, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Formik } from 'formik';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Sizes, BorderRadius, FontWeight, Shadows, CommonStyles } from '../styles';
+import { Colors, Sizes, BorderRadius, FontWeight } from '../styles';
+import { Input, Button, HeaderLogo } from '../components';
+import { resetPasswordSchema } from '../validations/authSchemas';
 
-export default function ResetPasswordScreen({ navigation }) {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const handleResetPassword = () => {
-    // TODO: Implement reset password logic
-    if (password !== confirmPassword) {
-      console.log('Passwords do not match');
-      return;
+export default function ResetPasswordScreen({ navigation, route }) {
+  const handleResetPassword = async (values, { setSubmitting }) => {
+    try {
+      // TODO: Implement reset password logic
+      console.log('Reset password:', values);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Navigate to login after successful reset
+      navigation.replace('Login');
+    } catch (error) {
+      console.error('Reset password error:', error);
+    } finally {
+      setSubmitting(false);
     }
-    if (password.length < 6) {
-      console.log('Password must be at least 6 characters');
-      return;
-    }
-    console.log('Reset password:', { password });
-    // Navigate to login after successful reset
-    navigation.navigate('Login');
   };
 
   return (
@@ -39,11 +28,9 @@ export default function ResetPasswordScreen({ navigation }) {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={styles.content}>
           <View style={styles.header}>
             <View style={styles.iconContainer}>
               <Ionicons name="lock-closed-outline" size={Sizes.icon.huge} color={Colors.primary} />
@@ -54,74 +41,64 @@ export default function ResetPasswordScreen({ navigation }) {
             </Text>
           </View>
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={Sizes.icon.m} color={Colors.text.secondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="New Password"
-                placeholderTextColor={Colors.text.tertiary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                  size={Sizes.icon.m}
-                  color={Colors.text.secondary}
+          <Formik
+            initialValues={{ password: '', confirmPassword: '' }}
+            validationSchema={resetPasswordSchema}
+            onSubmit={handleResetPassword}
+          >
+            {({ handleSubmit, isSubmitting }) => (
+              <View style={styles.form}>
+                <Input
+                  name="password"
+                  label="New Password"
+                  placeholder="Enter new password"
+                  icon="lock-closed-outline"
+                  secureTextEntry
+                  showPasswordToggle
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
-              </TouchableOpacity>
-            </View>
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={Sizes.icon.m} color={Colors.text.secondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm New Password"
-                placeholderTextColor={Colors.text.tertiary}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
-                  size={Sizes.icon.m}
-                  color={Colors.text.secondary}
+                <Input
+                  name="confirmPassword"
+                  label="Confirm New Password"
+                  placeholder="Confirm new password"
+                  icon="lock-closed-outline"
+                  secureTextEntry
+                  showPasswordToggle
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
-              </TouchableOpacity>
-            </View>
 
-            <View style={styles.passwordRequirements}>
-              <Text style={styles.requirementsTitle}>Password Requirements:</Text>
-              <Text style={styles.requirement}>• At least 6 characters</Text>
-              <Text style={styles.requirement}>• Mix of letters and numbers</Text>
-            </View>
+                <View style={styles.passwordRequirements}>
+                  <Text style={styles.requirementsTitle}>Password Requirements:</Text>
+                  <Text style={styles.requirement}>• At least 6 characters</Text>
+                  <Text style={styles.requirement}>• One uppercase letter</Text>
+                  <Text style={styles.requirement}>• One lowercase letter</Text>
+                  <Text style={styles.requirement}>• One number</Text>
+                </View>
 
-            <TouchableOpacity style={styles.resetButton} onPress={handleResetPassword}>
-              <Text style={styles.resetButtonText}>Reset Password</Text>
-            </TouchableOpacity>
+                <Button
+                  title="Reset Password"
+                  onPress={handleSubmit}
+                  variant="primary"
+                  size="large"
+                  loading={isSubmitting}
+                  fullWidth
+                  style={styles.resetButton}
+                />
 
-            <TouchableOpacity
-              style={styles.backToLogin}
-              onPress={() => navigation.navigate('Login')}
-            >
-              <Ionicons name="arrow-back" size={Sizes.icon.s} color={Colors.primary} />
-              <Text style={styles.backToLoginText}>Back to Login</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+                <TouchableOpacity
+                  style={styles.backToLogin}
+                  onPress={() => navigation.replace('Login')}
+                >
+                  <Ionicons name="arrow-back" size={Sizes.icon.s} color={Colors.primary} />
+                  <Text style={styles.backToLoginText}>Back to Login</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </Formik>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -135,12 +112,12 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: Sizes.xl,
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: Sizes.l,
   },
   header: {
-    marginTop: Sizes.xxxl,
     marginBottom: Sizes.xxxl,
     alignItems: 'center',
   },
@@ -168,29 +145,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Sizes.l,
   },
   form: {
-    flex: 1,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background.secondary,
-    borderRadius: BorderRadius.input.m,
-    borderWidth: Sizes.borderWidth.thin,
-    borderColor: Colors.border.light,
-    marginBottom: Sizes.l,
-    paddingHorizontal: Sizes.l,
-    height: Sizes.input.m,
-  },
-  inputIcon: {
-    marginRight: Sizes.m,
-  },
-  input: {
-    flex: 1,
-    fontSize: Sizes.fontSize.m,
-    color: Colors.text.primary,
-  },
-  eyeIcon: {
-    padding: Sizes.xs,
+    width: '100%',
   },
   passwordRequirements: {
     backgroundColor: Colors.background.secondary,
@@ -210,16 +165,7 @@ const styles = StyleSheet.create({
     marginBottom: Sizes.xs,
   },
   resetButton: {
-    ...CommonStyles.buttonBase,
-    backgroundColor: Colors.primary,
-    height: Sizes.button.m,
     marginBottom: Sizes.xl,
-    ...Shadows.medium,
-  },
-  resetButtonText: {
-    fontSize: Sizes.fontSize.l,
-    fontWeight: FontWeight.bold,
-    color: Colors.white,
   },
   backToLogin: {
     flexDirection: 'row',

@@ -1,26 +1,26 @@
-import React, { useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, View, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Formik } from 'formik';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Sizes, BorderRadius, FontWeight, Shadows, CommonStyles } from '../styles';
+import { Colors, Sizes, BorderRadius, FontWeight } from '../styles';
+import { Input, Button, HeaderLogo } from '../components';
+import { forgotPasswordSchema } from '../validations/authSchemas';
 
 export default function ForgotPasswordScreen({ navigation }) {
-  const [email, setEmail] = useState('');
-
-  const handleSendResetLink = () => {
-    // TODO: Implement forgot password logic
-    console.log('Send reset link to:', email);
-    // Navigate to reset password screen after sending email
-    navigation.navigate('Reset Password');
+  const handleSendResetLink = async (values, { setSubmitting }) => {
+    try {
+      // TODO: Implement forgot password logic
+      console.log('Send reset link to:', values.email);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Navigate to reset password screen after sending email
+      navigation.replace('Reset Password', { email: values.email });
+    } catch (error) {
+      console.error('Forgot password error:', error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -28,11 +28,9 @@ export default function ForgotPasswordScreen({ navigation }) {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={styles.content}>
           <View style={styles.header}>
             <View style={styles.iconContainer}>
               <Ionicons name="lock-open-outline" size={Sizes.icon.huge} color={Colors.primary} />
@@ -43,34 +41,44 @@ export default function ForgotPasswordScreen({ navigation }) {
             </Text>
           </View>
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={Sizes.icon.m} color={Colors.text.secondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor={Colors.text.tertiary}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
+          <Formik
+            initialValues={{ email: '' }}
+            validationSchema={forgotPasswordSchema}
+            onSubmit={handleSendResetLink}
+          >
+            {({ handleSubmit, isSubmitting }) => (
+              <View style={styles.form}>
+                <Input
+                  name="email"
+                  label="Email"
+                  placeholder="Enter your email"
+                  icon="mail-outline"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
 
-            <TouchableOpacity style={styles.sendButton} onPress={handleSendResetLink}>
-              <Text style={styles.sendButtonText}>Send Reset Link</Text>
-            </TouchableOpacity>
+                <Button
+                  title="Send Reset Link"
+                  onPress={handleSubmit}
+                  variant="primary"
+                  size="large"
+                  loading={isSubmitting}
+                  fullWidth
+                  style={styles.sendButton}
+                />
 
-            <TouchableOpacity
-              style={styles.backToLogin}
-              onPress={() => navigation.navigate('Login')}
-            >
-              <Ionicons name="arrow-back" size={Sizes.icon.s} color={Colors.primary} />
-              <Text style={styles.backToLoginText}>Back to Login</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+                <TouchableOpacity
+                  style={styles.backToLogin}
+                  onPress={() => navigation.replace('Login')}
+                >
+                  <Ionicons name="arrow-back" size={Sizes.icon.s} color={Colors.primary} />
+                  <Text style={styles.backToLoginText}>Back to Login</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </Formik>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -84,13 +92,13 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: Sizes.xl,
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: Sizes.l,
   },
   header: {
-    marginTop: Sizes.xxxl,
-    marginBottom: Sizes.xxxl,
+    marginBottom: Sizes.xl,
     alignItems: 'center',
   },
   iconContainer: {
@@ -117,38 +125,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Sizes.l,
   },
   form: {
-    flex: 1,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background.secondary,
-    borderRadius: BorderRadius.input.m,
-    borderWidth: Sizes.borderWidth.thin,
-    borderColor: Colors.border.light,
-    marginBottom: Sizes.xl,
-    paddingHorizontal: Sizes.l,
-    height: Sizes.input.m,
-  },
-  inputIcon: {
-    marginRight: Sizes.m,
-  },
-  input: {
-    flex: 1,
-    fontSize: Sizes.fontSize.m,
-    color: Colors.text.primary,
+    width: '100%',
   },
   sendButton: {
-    ...CommonStyles.buttonBase,
-    backgroundColor: Colors.primary,
-    height: Sizes.button.m,
     marginBottom: Sizes.xl,
-    ...Shadows.medium,
-  },
-  sendButtonText: {
-    fontSize: Sizes.fontSize.l,
-    fontWeight: FontWeight.bold,
-    color: Colors.white,
   },
   backToLogin: {
     flexDirection: 'row',

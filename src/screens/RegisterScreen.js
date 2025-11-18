@@ -1,33 +1,25 @@
-import React, { useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Sizes, BorderRadius, FontWeight, Shadows, CommonStyles } from '../styles';
+import { Formik } from 'formik';
+import { Colors, Sizes, FontWeight } from '../styles';
+import { Input, Button, Link, HeaderLogo } from '../components';
+import { registerSchema } from '../validations/authSchemas';
 
 export default function RegisterScreen({ navigation }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const handleRegister = () => {
-    // TODO: Implement registration logic
-    if (password !== confirmPassword) {
-      console.log('Passwords do not match');
-      return;
+  const handleRegister = async (values, { setSubmitting }) => {
+    try {
+      // TODO: Implement registration logic
+      console.log('Register:', values);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Navigate to login on success
+      navigation.replace('Login');
+    } catch (error) {
+      console.error('Registration error:', error);
+    } finally {
+      setSubmitting(false);
     }
-    console.log('Register:', { name, email, password });
   };
 
   return (
@@ -35,104 +27,87 @@ export default function RegisterScreen({ navigation }) {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={styles.content}>
+          <View style={styles.logoContainer}>
+            <HeaderLogo logoStyle={styles.logoStyle} />
+          </View>
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Sign up to get started</Text>
           </View>
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={Sizes.icon.m} color={Colors.text.secondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Full Name"
-                placeholderTextColor={Colors.text.tertiary}
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={Sizes.icon.m} color={Colors.text.secondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor={Colors.text.tertiary}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={Sizes.icon.m} color={Colors.text.secondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={Colors.text.tertiary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                  size={Sizes.icon.m}
-                  color={Colors.text.secondary}
+          <Formik
+            initialValues={{ name: '', email: '', password: '', confirmPassword: '' }}
+            validationSchema={registerSchema}
+            onSubmit={handleRegister}
+          >
+            {({ handleSubmit, isSubmitting }) => (
+              <View style={styles.form}>
+                <Input
+                  name="name"
+                  label="Full Name"
+                  placeholder="Enter your full name"
+                  icon="person-outline"
+                  autoCapitalize="words"
+                  autoCorrect={false}
                 />
-              </TouchableOpacity>
-            </View>
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={Sizes.icon.m} color={Colors.text.secondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm Password"
-                placeholderTextColor={Colors.text.tertiary}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
-                  size={Sizes.icon.m}
-                  color={Colors.text.secondary}
+                <Input
+                  name="email"
+                  label="Email"
+                  placeholder="Enter your email"
+                  icon="mail-outline"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
-              </TouchableOpacity>
-            </View>
 
-            <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-              <Text style={styles.registerButtonText}>Sign Up</Text>
-            </TouchableOpacity>
+                <Input
+                  name="password"
+                  label="Password"
+                  placeholder="Enter your password"
+                  icon="lock-closed-outline"
+                  secureTextEntry
+                  showPasswordToggle
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
 
-            <View style={styles.loginContainer}>
-              <Text style={styles.loginText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.loginLink}>Sign In</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
+                <Input
+                  name="confirmPassword"
+                  label="Confirm Password"
+                  placeholder="Confirm your password"
+                  icon="lock-closed-outline"
+                  secureTextEntry
+                  showPasswordToggle
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                <Button
+                  title="Sign Up"
+                  onPress={handleSubmit}
+                  variant="primary"
+                  size="large"
+                  loading={isSubmitting}
+                  fullWidth
+                  style={styles.registerButton}
+                />
+
+                <View style={styles.loginContainer}>
+                  <Text style={styles.loginText}>Already have an account? </Text>
+                  <Link
+                    text="Sign In"
+                    onPress={() => navigation.replace('Login')}
+                    variant="primary"
+                  />
+                </View>
+              </View>
+            )}
+          </Formik>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -146,13 +121,21 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: Sizes.xl,
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: Sizes.l,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: Sizes.xl,
+  },
+  logoStyle: {
+    height: Sizes.image.xs,
+    width: Sizes.image.xs,
   },
   header: {
-    marginTop: Sizes.xxxl,
-    marginBottom: Sizes.xxxl,
+    marginBottom: Sizes.xl,
     alignItems: 'center',
   },
   title: {
@@ -166,42 +149,11 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
   },
   form: {
-    flex: 1,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background.secondary,
-    borderRadius: BorderRadius.input.m,
-    borderWidth: Sizes.borderWidth.thin,
-    borderColor: Colors.border.light,
-    marginBottom: Sizes.l,
-    paddingHorizontal: Sizes.l,
-    height: Sizes.input.m,
-  },
-  inputIcon: {
-    marginRight: Sizes.m,
-  },
-  input: {
-    flex: 1,
-    fontSize: Sizes.fontSize.m,
-    color: Colors.text.primary,
-  },
-  eyeIcon: {
-    padding: Sizes.xs,
+    width: '100%',
   },
   registerButton: {
-    ...CommonStyles.buttonBase,
-    backgroundColor: Colors.primary,
-    height: Sizes.button.m,
     marginTop: Sizes.l,
     marginBottom: Sizes.xl,
-    ...Shadows.medium,
-  },
-  registerButtonText: {
-    fontSize: Sizes.fontSize.l,
-    fontWeight: FontWeight.bold,
-    color: Colors.white,
   },
   loginContainer: {
     flexDirection: 'row',

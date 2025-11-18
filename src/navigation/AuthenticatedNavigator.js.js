@@ -5,6 +5,7 @@ import HomeScreen from '../screens/HomeScreen';
 import StepTrackerScreen from '../screens/StepTrackerScreen';
 import StatsScreen from '../screens/StatsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import HeaderLogo from '../components/HeaderLogo';
 import { Colors, Sizes, FontWeight } from '../styles';
 
 const Tab = createBottomTabNavigator();
@@ -21,6 +22,7 @@ const AuthenticatedNavigator = () => {
                 headerTitleStyle: {
                     fontWeight: FontWeight.bold,
                 },
+                headerLeft: () => <HeaderLogo />,
                 tabBarActiveTintColor: Colors.navigation.tabActive,
                 tabBarInactiveTintColor: Colors.navigation.tabInactive,
                 tabBarStyle: {

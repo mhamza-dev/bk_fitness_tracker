@@ -1,26 +1,23 @@
-import React, { useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Sizes, BorderRadius, FontWeight, Shadows, CommonStyles } from '../styles';
+import { Formik } from 'formik';
+import { Colors, Sizes, FontWeight } from '../styles';
+import { Input, Button, Link, HeaderLogo } from '../components';
+import { loginSchema } from '../validations/authSchemas';
 
 export default function LoginScreen({ navigation }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-
-  const handleLogin = () => {
-    // TODO: Implement login logic
-    console.log('Login:', { email, password });
+  const handleLogin = async (values, { setSubmitting }) => {
+    try {
+      // TODO: Implement login logic
+      console.log('Login:', values);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -28,74 +25,76 @@ export default function LoginScreen({ navigation }) {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={styles.content}>
+          <View style={styles.logoContainer}>
+            <HeaderLogo logoStyle={styles.logoStyle} />
+          </View>
           <View style={styles.header}>
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>Sign in to continue</Text>
           </View>
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={Sizes.icon.m} color={Colors.text.secondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor={Colors.text.tertiary}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={Sizes.icon.m} color={Colors.text.secondary} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={Colors.text.tertiary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                  size={Sizes.icon.m}
-                  color={Colors.text.secondary}
+          <Formik
+            initialValues={{ email: '', password: '' }}
+            validationSchema={loginSchema}
+            onSubmit={handleLogin}
+          >
+            {({ handleSubmit, isSubmitting }) => (
+              <View style={styles.form}>
+                <Input
+                  name="email"
+                  label="Email"
+                  placeholder="Enter your email"
+                  icon="mail-outline"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
-              </TouchableOpacity>
-            </View>
 
-            <TouchableOpacity
-              style={styles.forgotPassword}
-              onPress={() => navigation.navigate('Forgot Password')}
-            >
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
+                <Input
+                  name="password"
+                  label="Password"
+                  placeholder="Enter your password"
+                  icon="lock-closed-outline"
+                  secureTextEntry
+                  showPasswordToggle
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
 
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.loginButtonText}>Login</Text>
-            </TouchableOpacity>
+                <View style={styles.forgotPasswordContainer}>
+                  <Link
+                    text="Forgot Password?"
+                    onPress={() => navigation.replace('Forgot Password')}
+                    variant="primary"
+                    style={styles.forgotPassword}
+                  />
+                </View>
 
-            <View style={styles.registerContainer}>
-              <Text style={styles.registerText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.registerLink}>Sign Up</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
+                <Button
+                  title="Login"
+                  onPress={handleSubmit}
+                  variant="primary"
+                  size="large"
+                  loading={isSubmitting}
+                  fullWidth
+                  style={styles.loginButton}
+                />
+
+                <View style={styles.registerContainer}>
+                  <Text style={styles.registerText}>Don't have an account? </Text>
+                  <Link
+                    text="Sign Up"
+                    onPress={() => navigation.replace('Register')}
+                    variant="primary"
+                  />
+                </View>
+              </View>
+            )}
+          </Formik>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -109,13 +108,21 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: Sizes.xl,
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: Sizes.l,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: Sizes.xl,
+  },
+  logoStyle: {
+    height: Sizes.image.xs,
+    width: Sizes.image.xs,
   },
   header: {
-    marginTop: Sizes.xxxl,
-    marginBottom: Sizes.xxxl,
+    marginBottom: Sizes.xl,
     alignItems: 'center',
   },
   title: {
@@ -129,50 +136,14 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
   },
   form: {
-    flex: 1,
+    width: '100%',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background.secondary,
-    borderRadius: BorderRadius.input.m,
-    borderWidth: Sizes.borderWidth.thin,
-    borderColor: Colors.border.light,
-    marginBottom: Sizes.l,
-    paddingHorizontal: Sizes.l,
-    height: Sizes.input.m,
-  },
-  inputIcon: {
-    marginRight: Sizes.m,
-  },
-  input: {
-    flex: 1,
-    fontSize: Sizes.fontSize.m,
-    color: Colors.text.primary,
-  },
-  eyeIcon: {
-    padding: Sizes.xs,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
+  forgotPasswordContainer: {
     marginBottom: Sizes.xl,
-  },
-  forgotPasswordText: {
-    fontSize: Sizes.fontSize.m,
-    color: Colors.primary,
-    fontWeight: FontWeight.medium,
+    alignItems: 'flex-end',
   },
   loginButton: {
-    ...CommonStyles.buttonBase,
-    backgroundColor: Colors.primary,
-    height: Sizes.button.m,
     marginBottom: Sizes.xl,
-    ...Shadows.medium,
-  },
-  loginButtonText: {
-    fontSize: Sizes.fontSize.l,
-    fontWeight: FontWeight.bold,
-    color: Colors.white,
   },
   registerContainer: {
     flexDirection: 'row',

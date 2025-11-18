@@ -15,7 +15,7 @@ export const Sizes = {
   xxxl: 32,
   huge: 40,
   massive: 48,
-  
+
   // Specific spacing values
   spacing: {
     xs: 4,
@@ -28,7 +28,7 @@ export const Sizes = {
     huge: 40,
     massive: 48,
   },
-  
+
   // Font sizes
   fontSize: {
     xs: 10,
@@ -42,7 +42,7 @@ export const Sizes = {
     massive: 32,
     giant: 36,
   },
-  
+
   // Icon sizes
   icon: {
     xs: 16,
@@ -53,7 +53,7 @@ export const Sizes = {
     xxl: 40,
     huge: 48,
   },
-  
+
   // Border widths
   borderWidth: {
     none: 0,
@@ -61,7 +61,7 @@ export const Sizes = {
     medium: 2,
     thick: 3,
   },
-  
+
   // Avatar sizes
   avatar: {
     xs: 32,
@@ -71,34 +71,54 @@ export const Sizes = {
     xl: 100,
     xxl: 120,
   },
-  
+
   // Button heights
   button: {
-    xs: 32,
-    s: 40,
-    m: 48,
-    l: 56,
-    xl: 64,
+    xs: 24,
+    s: 32,
+    m: 40,
+    l: 48,
+    xl: 56,
+    xxl: 64,
+    xxxl: 72,
+    huge: 80,
+    massive: 88,
   },
-  
+
   // Input heights
   input: {
     s: 40,
     m: 48,
     l: 56,
   },
-  
+
   // Tab bar
   tabBar: {
     height: 60,
     iconSize: 24,
   },
-  
+
   // Animation sizes
   animation: {
     small: 150,
     medium: 200,
     large: 250,
+  },
+
+  // Header logo sizes
+  headerLogo: {
+    width: 120,
+    height: 40,
+  },
+
+  image: {
+    xxs: 60,
+    xs: 100,
+    s: 120,
+    m: 160,
+    l: 200,
+    xl: 240,
+    xxl: 280,
   },
 };
 
@@ -108,23 +128,23 @@ export const Colors = {
   primary: '#f8d215',
   primaryDark: '#d4b011',
   primaryLight: '#fae04d',
-  
+
   // Secondary colors (Black theme)
   secondary: '#000000',
   secondaryDark: '#000000',
   secondaryLight: '#1a1a1a',
-  
+
   // Accent colors
   accent: '#f8d215',
   accentDark: '#d4b011',
   accentLight: '#fae04d',
-  
+
   // Status colors
   success: '#4CAF50',
   error: '#F44336',
   warning: '#f8d215',
   info: '#f8d215',
-  
+
   // Text colors (optimized for black/yellow theme)
   text: {
     primary: '#FFFFFF',
@@ -134,7 +154,7 @@ export const Colors = {
     inverse: '#000000',
     link: '#f8d215',
   },
-  
+
   // Background colors (Black theme)
   background: {
     primary: '#000000',
@@ -143,14 +163,14 @@ export const Colors = {
     dark: '#000000',
     light: '#0a0a0a',
   },
-  
+
   // Border colors (for dark theme)
   border: {
     light: '#333333',
     medium: '#555555',
     dark: '#777777',
   },
-  
+
   // Common colors
   white: '#FFFFFF',
   black: '#000000',
@@ -165,7 +185,7 @@ export const Colors = {
   orange: '#FF9800',
   yellow: '#f8d215',
   purple: '#9C27B0',
-  
+
   // Navigation colors (Black header with yellow accents)
   navigation: {
     headerBackground: '#000000',
@@ -186,7 +206,7 @@ export const BorderRadius = {
   xxl: 12,
   xxxl: 16,
   round: 9999, // For circular elements
-  
+
   // Specific use cases
   button: {
     s: 4,
@@ -277,7 +297,7 @@ export const Layout = {
     none: 0,
     auto: 1,
   },
-  
+
   // Common alignments
   align: {
     start: 'flex-start',
@@ -288,7 +308,7 @@ export const Layout = {
     spaceAround: 'space-around',
     spaceEvenly: 'space-evenly',
   },
-  
+
   // Common justify content
   justify: {
     start: 'flex-start',
@@ -298,7 +318,7 @@ export const Layout = {
     spaceAround: 'space-around',
     spaceEvenly: 'space-evenly',
   },
-  
+
   // Common directions
   direction: {
     row: 'row',
@@ -306,7 +326,7 @@ export const Layout = {
     rowReverse: 'row-reverse',
     columnReverse: 'column-reverse',
   },
-  
+
   // Position
   position: {
     relative: 'relative',
@@ -348,19 +368,19 @@ export const CommonStyles = {
     flex: 1,
     backgroundColor: Colors.background.primary,
   },
-  
+
   // Centered content
   centered: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   // Row layout
   row: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  
+
   // Card style
   card: {
     backgroundColor: Colors.white,
@@ -368,7 +388,7 @@ export const CommonStyles = {
     padding: Sizes.l,
     ...Shadows.medium,
   },
-  
+
   // Button base
   buttonBase: {
     paddingHorizontal: Sizes.xl,
@@ -377,7 +397,7 @@ export const CommonStyles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   // Input base
   inputBase: {
     height: Sizes.input.m,
@@ -387,7 +407,7 @@ export const CommonStyles = {
     borderColor: Colors.border.light,
     backgroundColor: Colors.white,
   },
-  
+
   // Text styles
   text: {
     primary: {
