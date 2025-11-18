@@ -77,3 +77,4 @@ const AuthenticatedNavigator = () => {
 };
 
 export default AuthenticatedNavigator;
+

@@ -1,20 +1,67 @@
-import React from 'react';
-import { StyleSheet, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Formik } from 'formik';
-import { Colors, Sizes, FontWeight } from '../styles';
+import { Colors, Sizes, FontWeight, BorderRadius } from '../styles';
 import { Input, Button, Link, HeaderLogo } from '../components';
 import { loginSchema } from '../validations/authSchemas';
+import { loginUser } from '../services/userService';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen({ navigation }) {
-  const handleLogin = async (values, { setSubmitting }) => {
+  const [error, setError] = useState(null);
+  const { login } = useAuth();
+
+  const handleLogin = async (values, { setSubmitting, setFieldError }) => {
     try {
-      // TODO: Implement login logic
-      console.log('Login:', values);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setError(null);
+
+      console.log('Attempting login to:', process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api');
+
+      // Call login API
+      const response = await loginUser(values.email, values.password);
+
+      console.log('Login response:', response);
+
+      // Extract user data and token from response
+      // Response format could be: { user: {...}, token: "..." } or { ...userData, token: "..." }
+      const userData = response.user || (response.token ? { ...response, token: undefined } : response);
+      const token = response.token;
+
+      if (!token) {
+        throw new Error('No authentication token received');
+      }
+
+      // Update auth context
+      await login(userData, token);
+
+      console.log('Login successful, auth state updated');
+      // Navigation will happen automatically via AuthContext
     } catch (error) {
       console.error('Login error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        isNetworkError: error.isNetworkError,
+        originalError: error.originalError,
+      });
+
+      // Handle specific error cases
+      let errorMessage = error.message || 'Login failed. Please check your credentials.';
+
+      // Provide more helpful message for network errors
+      if (error.isNetworkError) {
+        errorMessage = error.message;
+      }
+
+      setError(errorMessage);
+
+      // Set field errors if available
+      if (error.message?.includes('email') || error.message?.includes('password')) {
+        setFieldError('password', errorMessage);
+      } else {
+        // Show general error alert
+        Alert.alert('Login Failed', errorMessage);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -43,6 +90,12 @@ export default function LoginScreen({ navigation }) {
           >
             {({ handleSubmit, isSubmitting }) => (
               <View style={styles.form}>
+                {error && (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                )}
+
                 <Input
                   name="email"
                   label="Email"
@@ -158,6 +211,19 @@ const styles = StyleSheet.create({
     fontSize: Sizes.fontSize.m,
     color: Colors.primary,
     fontWeight: FontWeight.bold,
+  },
+  errorContainer: {
+    backgroundColor: Colors.error + '20',
+    borderRadius: BorderRadius.m,
+    padding: Sizes.m,
+    marginBottom: Sizes.l,
+    borderWidth: 1,
+    borderColor: Colors.error,
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: Sizes.fontSize.s,
+    textAlign: 'center',
   },
 });
 

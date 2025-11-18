@@ -1,16 +1,28 @@
 /**
  * API Service
- * Handles HTTP requests to the backend API
+ * Handles HTTP requests to the backend API using Axios
  */
 
+import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
+console.log('API_BASE_URL:', API_BASE_URL);
+
+// Create axios instance
+const apiClient = axios.create({
+    baseURL: API_BASE_URL,
+    timeout: 10000, // 10 seconds timeout
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
 /**
  * Get auth token from storage
  */
-const getAuthToken = async () => {
+export const getAuthToken = async () => {
     try {
         const token = await AsyncStorage.getItem('authToken');
         return token;
@@ -23,9 +35,13 @@ const getAuthToken = async () => {
 /**
  * Set auth token in storage
  */
-const setAuthToken = async (token) => {
+export const setAuthToken = async (token) => {
     try {
         await AsyncStorage.setItem('authToken', token);
+        // Update axios default header
+        if (token) {
+            apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        }
     } catch (error) {
         console.error('Error setting auth token:', error);
     }
@@ -34,86 +50,135 @@ const setAuthToken = async (token) => {
 /**
  * Remove auth token from storage
  */
-const removeAuthToken = async () => {
+export const removeAuthToken = async () => {
     try {
         await AsyncStorage.removeItem('authToken');
+        // Remove axios default header
+        delete apiClient.defaults.headers.common['Authorization'];
     } catch (error) {
         console.error('Error removing auth token:', error);
     }
 };
 
-/**
- * Make API request
- */
-const apiRequest = async (endpoint, options = {}) => {
-    try {
+// Request interceptor to add auth token to requests
+apiClient.interceptors.request.use(
+    async (config) => {
         const token = await getAuthToken();
-
-        const headers = {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        };
-
         if (token) {
-            headers.Authorization = `Bearer ${token}`;
+            config.headers.Authorization = `Bearer ${token}`;
         }
 
-        const config = {
-            ...options,
-            headers,
-        };
-
-        // Handle body for POST/PUT/PATCH requests
-        if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
-            config.body = JSON.stringify(options.body);
-        } else if (options.body) {
-            config.body = options.body;
+        // Log request for debugging (only in development)
+        if (__DEV__) {
+            console.log(`API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
         }
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.message || data.error || 'An error occurred');
-        }
-
-        return data;
-    } catch (error) {
-        if (error.message) {
-            throw error;
-        }
-        throw new Error('Network error. Please check your connection.');
+        return config;
+    },
+    (error) => {
+        console.error('Request interceptor error:', error);
+        return Promise.reject(error);
     }
-};
+);
+
+// Response interceptor to handle errors globally
+apiClient.interceptors.response.use(
+    (response) => {
+        return response.data;
+    },
+    async (error) => {
+        // Log full error for debugging
+        console.error('API Error Details:', {
+            message: error.message,
+            code: error.code,
+            response: error.response?.data,
+            status: error.response?.status,
+            request: error.request ? 'Request made but no response' : null,
+            config: {
+                url: error.config?.url,
+                method: error.config?.method,
+                baseURL: error.config?.baseURL,
+            },
+        });
+
+        // Handle network errors (common in React Native)
+        if (
+            error.message === 'Network Error' ||
+            error.code === 'NETWORK_ERROR' ||
+            error.code === 'ECONNREFUSED' ||
+            error.message?.includes('Network request failed') ||
+            error.message?.includes('Unable to resolve host')
+        ) {
+            const baseURL = API_BASE_URL;
+            const isLocalhost = baseURL.includes('localhost') || baseURL.includes('127.0.0.1');
+
+            let errorMessage = 'Unable to connect to server. ';
+            if (isLocalhost) {
+                errorMessage += 'If you\'re using a physical device, replace "localhost" with your computer\'s IP address (e.g., http://192.168.1.100:5001/api). ';
+            }
+            errorMessage += 'Please check your internet connection and ensure the backend is running.';
+
+            const networkError = new Error(errorMessage);
+            networkError.isNetworkError = true;
+            networkError.originalError = error;
+            return Promise.reject(networkError);
+        }
+
+        // Handle timeout errors
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+            const timeoutError = new Error('Request timeout. The server is taking too long to respond.');
+            timeoutError.isTimeout = true;
+            timeoutError.originalError = error;
+            return Promise.reject(timeoutError);
+        }
+
+        // Handle axios errors
+        if (error.response) {
+            // Server responded with error status
+            const message = error.response.data?.message || error.response.data?.error || `Request failed with status ${error.response.status}`;
+            const apiError = new Error(message);
+            apiError.status = error.response.status;
+            apiError.data = error.response.data;
+            return Promise.reject(apiError);
+        } else if (error.request) {
+            // Request was made but no response received
+            const baseURL = API_BASE_URL;
+            const isLocalhost = baseURL.includes('localhost') || baseURL.includes('127.0.0.1');
+
+            let errorMessage = 'No response from server. ';
+            if (isLocalhost) {
+                errorMessage += 'If you\'re using a physical device, replace "localhost" with your computer\'s IP address. ';
+            }
+            errorMessage += 'Please check your connection and ensure the backend is running.';
+
+            const requestError = new Error(errorMessage);
+            requestError.isNetworkError = true;
+            requestError.originalError = error;
+            return Promise.reject(requestError);
+        } else {
+            // Something else happened
+            return Promise.reject(error);
+        }
+    }
+);
 
 /**
  * Auth API
  */
 export const authAPI = {
     register: async (userData) => {
-        const response = await apiRequest('/auth/register', {
-            method: 'POST',
-            body: userData,
-        });
-
+        const response = await apiClient.post('/auth/register', userData);
         if (response.token) {
             await setAuthToken(response.token);
         }
-
         return response;
     },
 
     login: async (email, password) => {
-        const response = await apiRequest('/auth/login', {
-            method: 'POST',
-            body: { email, password },
-        });
-
+        const response = await apiClient.post('/auth/login', { email, password });
         if (response.token) {
             await setAuthToken(response.token);
         }
-
         return response;
     },
 
@@ -122,14 +187,11 @@ export const authAPI = {
     },
 
     getCurrentUser: async () => {
-        return await apiRequest('/auth/me');
+        return await apiClient.get('/auth/me');
     },
 
     changePassword: async (currentPassword, newPassword) => {
-        return await apiRequest('/auth/change-password', {
-            method: 'POST',
-            body: { currentPassword, newPassword },
-        });
+        return await apiClient.post('/auth/change-password', { currentPassword, newPassword });
     },
 };
 
@@ -138,56 +200,35 @@ export const authAPI = {
  */
 export const profileAPI = {
     getProfile: async () => {
-        return await apiRequest('/profiles');
+        return await apiClient.get('/profiles');
     },
 
     createOrUpdateProfile: async (profileData) => {
-        return await apiRequest('/profiles', {
-            method: 'POST',
-            body: profileData,
-        });
+        return await apiClient.post('/profiles', profileData);
     },
 
     updateProfile: async (profileData) => {
-        return await apiRequest('/profiles', {
-            method: 'PUT',
-            body: profileData,
-        });
+        return await apiClient.put('/profiles', profileData);
     },
 
     addAllergy: async (allergy) => {
-        return await apiRequest('/profiles/allergies', {
-            method: 'POST',
-            body: allergy,
-        });
+        return await apiClient.post('/profiles/allergies', allergy);
     },
 
     removeAllergy: async (allergyName) => {
-        return await apiRequest('/profiles/allergies', {
-            method: 'DELETE',
-            body: { name: allergyName },
-        });
+        return await apiClient.delete('/profiles/allergies', { data: { name: allergyName } });
     },
 
     addPhysicalIssue: async (physicalIssue) => {
-        return await apiRequest('/profiles/physical-issues', {
-            method: 'POST',
-            body: physicalIssue,
-        });
+        return await apiClient.post('/profiles/physical-issues', physicalIssue);
     },
 
     removePhysicalIssue: async (issueName) => {
-        return await apiRequest('/profiles/physical-issues', {
-            method: 'DELETE',
-            body: { name: issueName },
-        });
+        return await apiClient.delete('/profiles/physical-issues', { data: { name: issueName } });
     },
 
     updateWeightHeight: async (weight, height, weightUnit, heightUnit) => {
-        return await apiRequest('/profiles/weight-height', {
-            method: 'PUT',
-            body: { weight, height, weightUnit, heightUnit },
-        });
+        return await apiClient.put('/profiles/weight-height', { weight, height, weightUnit, heightUnit });
     },
 };
 
@@ -196,30 +237,21 @@ export const profileAPI = {
  */
 export const foodAPI = {
     getFoods: async (filters = {}) => {
-        const queryParams = new URLSearchParams();
-        Object.keys(filters).forEach(key => {
-            if (filters[key] !== undefined && filters[key] !== null) {
-                if (Array.isArray(filters[key])) {
-                    filters[key].forEach(val => queryParams.append(key, val));
-                } else {
-                    queryParams.append(key, filters[key]);
-                }
-            }
-        });
-        const queryString = queryParams.toString();
-        return await apiRequest(`/foods${queryString ? `?${queryString}` : ''}`);
+        return await apiClient.get('/foods', { params: filters });
     },
 
     getFoodById: async (foodId) => {
-        return await apiRequest(`/foods/${foodId}`);
+        return await apiClient.get(`/foods/${foodId}`);
     },
 
     searchFoods: async (searchTerm, limit = 20) => {
-        return await apiRequest(`/foods/search?q=${encodeURIComponent(searchTerm)}&limit=${limit}`);
+        return await apiClient.get('/foods/search', {
+            params: { q: searchTerm, limit },
+        });
     },
 
     getFoodsForProfile: async () => {
-        return await apiRequest('/foods/for-profile');
+        return await apiClient.get('/foods/for-profile');
     },
 };
 
@@ -228,52 +260,35 @@ export const foodAPI = {
  */
 export const dietPlanAPI = {
     createDietPlan: async (planData) => {
-        return await apiRequest('/diet-plans', {
-            method: 'POST',
-            body: planData,
-        });
+        return await apiClient.post('/diet-plans', planData);
     },
 
     getDietPlanById: async (planId) => {
-        return await apiRequest(`/diet-plans/${planId}`);
+        return await apiClient.get(`/diet-plans/${planId}`);
     },
 
     getActiveDietPlan: async () => {
-        return await apiRequest('/diet-plans/active');
+        return await apiClient.get('/diet-plans/active');
     },
 
     getUserDietPlans: async (filters = {}) => {
-        const queryParams = new URLSearchParams();
-        Object.keys(filters).forEach(key => {
-            if (filters[key] !== undefined && filters[key] !== null) {
-                queryParams.append(key, filters[key]);
-            }
-        });
-        const queryString = queryParams.toString();
-        return await apiRequest(`/diet-plans${queryString ? `?${queryString}` : ''}`);
+        return await apiClient.get('/diet-plans', { params: filters });
     },
 
     updateDietPlan: async (planId, updateData) => {
-        return await apiRequest(`/diet-plans/${planId}`, {
-            method: 'PUT',
-            body: updateData,
-        });
+        return await apiClient.put(`/diet-plans/${planId}`, updateData);
     },
 
     deactivateDietPlan: async (planId) => {
-        return await apiRequest(`/diet-plans/${planId}/deactivate`, {
-            method: 'PUT',
-        });
+        return await apiClient.put(`/diet-plans/${planId}/deactivate`);
     },
 
     generateDietPlanSuggestions: async () => {
-        return await apiRequest('/diet-plans/generate-suggestions');
+        return await apiClient.post('/diet-plans/generate-suggestions');
     },
 
     deleteDietPlan: async (planId) => {
-        return await apiRequest(`/diet-plans/${planId}`, {
-            method: 'DELETE',
-        });
+        return await apiClient.delete(`/diet-plans/${planId}`);
     },
 };
 
@@ -282,56 +297,37 @@ export const dietPlanAPI = {
  */
 export const mealAPI = {
     createMeal: async (mealData) => {
-        return await apiRequest('/meals', {
-            method: 'POST',
-            body: mealData,
-        });
+        return await apiClient.post('/meals', mealData);
     },
 
     getMealById: async (mealId) => {
-        return await apiRequest(`/meals/${mealId}`);
+        return await apiClient.get(`/meals/${mealId}`);
     },
 
     getUserMeals: async (filters = {}) => {
-        const queryParams = new URLSearchParams();
-        Object.keys(filters).forEach(key => {
-            if (filters[key] !== undefined && filters[key] !== null) {
-                if (key === 'date') {
-                    queryParams.append(key, filters[key]);
-                } else if (key === 'startDate' || key === 'endDate') {
-                    queryParams.append(key, filters[key]);
-                } else {
-                    queryParams.append(key, filters[key]);
-                }
-            }
-        });
-        const queryString = queryParams.toString();
-        return await apiRequest(`/meals${queryString ? `?${queryString}` : ''}`);
+        return await apiClient.get('/meals', { params: filters });
     },
 
     getMealsByDate: async (date) => {
-        return await apiRequest(`/meals/date/${date}`);
+        return await apiClient.get(`/meals/date/${date}`);
     },
 
     getDailyNutrition: async (date) => {
-        return await apiRequest(`/meals/nutrition/${date}`);
+        return await apiClient.get(`/meals/nutrition/${date}`);
     },
 
     updateMeal: async (mealId, updateData) => {
-        return await apiRequest(`/meals/${mealId}`, {
-            method: 'PUT',
-            body: updateData,
-        });
+        return await apiClient.put(`/meals/${mealId}`, updateData);
     },
 
     deleteMeal: async (mealId) => {
-        return await apiRequest(`/meals/${mealId}`, {
-            method: 'DELETE',
-        });
+        return await apiClient.delete(`/meals/${mealId}`);
     },
 
     getNutritionSummary: async (startDate, endDate) => {
-        return await apiRequest(`/meals/nutrition-summary?startDate=${startDate}&endDate=${endDate}`);
+        return await apiClient.get('/meals/nutrition-summary', {
+            params: { startDate, endDate },
+        });
     },
 };
 
@@ -340,60 +336,47 @@ export const mealAPI = {
  */
 export const fitnessDataAPI = {
     createOrUpdateFitnessData: async (date, fitnessData) => {
-        return await apiRequest('/fitness-data', {
-            method: 'POST',
-            body: { date, ...fitnessData },
-        });
+        return await apiClient.post('/fitness-data', { date, ...fitnessData });
     },
 
     getFitnessDataById: async (dataId) => {
-        return await apiRequest(`/fitness-data/${dataId}`);
+        return await apiClient.get(`/fitness-data/${dataId}`);
     },
 
     getFitnessDataByDate: async (date) => {
-        return await apiRequest(`/fitness-data/date/${date}`);
+        return await apiClient.get(`/fitness-data/date/${date}`);
     },
 
     getFitnessDataRange: async (startDate, endDate) => {
-        return await apiRequest(`/fitness-data/range?startDate=${startDate}&endDate=${endDate}`);
+        return await apiClient.get('/fitness-data/range', {
+            params: { startDate, endDate },
+        });
     },
 
     updateSteps: async (date, steps) => {
-        return await apiRequest('/fitness-data/steps', {
-            method: 'PUT',
-            body: { date, steps },
-        });
+        return await apiClient.put('/fitness-data/steps', { date, steps });
     },
 
     addWorkout: async (date, workout) => {
-        return await apiRequest('/fitness-data/workouts', {
-            method: 'POST',
-            body: { date, workout },
-        });
+        return await apiClient.post('/fitness-data/workouts', { date, workout });
     },
 
     updateWaterIntake: async (date, waterIntake, waterUnit = 'ml') => {
-        return await apiRequest('/fitness-data/water', {
-            method: 'PUT',
-            body: { date, waterIntake, waterUnit },
-        });
+        return await apiClient.put('/fitness-data/water', { date, waterIntake, waterUnit });
     },
 
     updateSleep: async (date, sleepHours, sleepQuality) => {
-        return await apiRequest('/fitness-data/sleep', {
-            method: 'PUT',
-            body: { date, sleepHours, sleepQuality },
-        });
+        return await apiClient.put('/fitness-data/sleep', { date, sleepHours, sleepQuality });
     },
 
     getFitnessStats: async (startDate, endDate) => {
-        return await apiRequest(`/fitness-data/stats?startDate=${startDate}&endDate=${endDate}`);
+        return await apiClient.get('/fitness-data/stats', {
+            params: { startDate, endDate },
+        });
     },
 
     deleteFitnessData: async (dataId) => {
-        return await apiRequest(`/fitness-data/${dataId}`, {
-            method: 'DELETE',
-        });
+        return await apiClient.delete(`/fitness-data/${dataId}`);
     },
 };
 
@@ -402,55 +385,42 @@ export const fitnessDataAPI = {
  */
 export const weightAPI = {
     addWeightEntry: async (weightData) => {
-        return await apiRequest('/weights', {
-            method: 'POST',
-            body: weightData,
-        });
+        return await apiClient.post('/weights', weightData);
     },
 
     getWeightById: async (weightId) => {
-        return await apiRequest(`/weights/${weightId}`);
+        return await apiClient.get(`/weights/${weightId}`);
     },
 
     getWeightHistory: async (filters = {}) => {
-        const queryParams = new URLSearchParams();
-        Object.keys(filters).forEach(key => {
-            if (filters[key] !== undefined && filters[key] !== null) {
-                queryParams.append(key, filters[key]);
-            }
-        });
-        const queryString = queryParams.toString();
-        return await apiRequest(`/weights${queryString ? `?${queryString}` : ''}`);
+        return await apiClient.get('/weights', { params: filters });
     },
 
     getLatestWeight: async () => {
-        return await apiRequest('/weights/latest');
+        return await apiClient.get('/weights/latest');
     },
 
     getWeightStats: async (startDate, endDate) => {
-        return await apiRequest(`/weights/stats?startDate=${startDate}&endDate=${endDate}`);
+        return await apiClient.get('/weights/stats', {
+            params: { startDate, endDate },
+        });
     },
 
     updateWeight: async (weightId, updateData) => {
-        return await apiRequest(`/weights/${weightId}`, {
-            method: 'PUT',
-            body: updateData,
-        });
+        return await apiClient.put(`/weights/${weightId}`, updateData);
     },
 
     deleteWeight: async (weightId) => {
-        return await apiRequest(`/weights/${weightId}`, {
-            method: 'DELETE',
-        });
+        return await apiClient.delete(`/weights/${weightId}`);
     },
 
     getWeightProgress: async (days = 30) => {
-        return await apiRequest(`/weights/progress?days=${days}`);
+        return await apiClient.get('/weights/progress', { params: { days } });
     },
 };
 
 export default {
-    apiRequest,
+    apiClient,
     getAuthToken,
     setAuthToken,
     removeAuthToken,

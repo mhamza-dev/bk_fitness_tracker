@@ -47,8 +47,10 @@ const Input = ({
   };
 
   const handleBlur = (e) => {
-    if (name && field) {
-      field.onBlur(e);
+    if (name && helpers) {
+      // Mark the field as touched when it loses focus
+      // This is the proper way to handle blur with Formik's useField hook
+      helpers.setTouched(true);
     }
     if (props.onBlur) {
       props.onBlur(e);

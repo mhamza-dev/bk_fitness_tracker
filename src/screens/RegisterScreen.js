@@ -6,9 +6,11 @@ import { Colors, Sizes, FontWeight, BorderRadius } from '../styles';
 import { Input, Button, Link, HeaderLogo } from '../components';
 import { registerSchema } from '../validations/authSchemas';
 import { authAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function RegisterScreen({ navigation }) {
   const [error, setError] = useState(null);
+  const { login } = useAuth();
 
   const handleRegister = async (values, { setSubmitting, setFieldError }) => {
     try {
@@ -20,20 +22,25 @@ export default function RegisterScreen({ navigation }) {
       // Call registration API
       const response = await authAPI.register(userData);
 
-      // Show success message
-      Alert.alert(
-        'Success',
-        'Account created successfully! Please login to continue.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Navigate to login on success
-              navigation.replace('Login');
+      // If token is returned, automatically log in the user
+      if (response.token && (response.user || response)) {
+        await login(response.user || response, response.token);
+        // Navigation will happen automatically via AuthContext
+      } else {
+        // Show success message and navigate to login
+        Alert.alert(
+          'Success',
+          'Account created successfully! Please login to continue.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                navigation.replace('Login');
+              },
             },
-          },
-        ]
-      );
+          ]
+        );
+      }
     } catch (error) {
       console.error('Registration error:', error);
 
