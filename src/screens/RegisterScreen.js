@@ -1,22 +1,53 @@
-import React from 'react';
-import { StyleSheet, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Formik } from 'formik';
-import { Colors, Sizes, FontWeight } from '../styles';
+import { Colors, Sizes, FontWeight, BorderRadius } from '../styles';
 import { Input, Button, Link, HeaderLogo } from '../components';
 import { registerSchema } from '../validations/authSchemas';
+import { authAPI } from '../services/api';
 
 export default function RegisterScreen({ navigation }) {
-  const handleRegister = async (values, { setSubmitting }) => {
+  const [error, setError] = useState(null);
+
+  const handleRegister = async (values, { setSubmitting, setFieldError }) => {
     try {
-      // TODO: Implement registration logic
-      console.log('Register:', values);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Navigate to login on success
-      navigation.replace('Login');
+      setError(null);
+
+      // Remove confirmPassword before sending to API
+      const { confirmPassword, ...userData } = values;
+
+      // Call registration API
+      const response = await authAPI.register(userData);
+
+      // Show success message
+      Alert.alert(
+        'Success',
+        'Account created successfully! Please login to continue.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate to login on success
+              navigation.replace('Login');
+            },
+          },
+        ]
+      );
     } catch (error) {
       console.error('Registration error:', error);
+
+      // Handle specific error cases
+      const errorMessage = error.message || 'Registration failed. Please try again.';
+      setError(errorMessage);
+
+      // Set field errors if available
+      if (error.message?.includes('email')) {
+        setFieldError('email', errorMessage);
+      } else {
+        // Show general error alert
+        Alert.alert('Registration Failed', errorMessage);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -45,6 +76,12 @@ export default function RegisterScreen({ navigation }) {
           >
             {({ handleSubmit, isSubmitting }) => (
               <View style={styles.form}>
+                {error && (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                )}
+
                 <Input
                   name="name"
                   label="Full Name"
@@ -168,6 +205,19 @@ const styles = StyleSheet.create({
     fontSize: Sizes.fontSize.m,
     color: Colors.primary,
     fontWeight: FontWeight.bold,
+  },
+  errorContainer: {
+    backgroundColor: Colors.error + '20',
+    borderRadius: BorderRadius.m,
+    padding: Sizes.m,
+    marginBottom: Sizes.l,
+    borderWidth: 1,
+    borderColor: Colors.error,
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: Sizes.fontSize.s,
+    textAlign: 'center',
   },
 });
 

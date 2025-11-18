@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Accelerometer } from 'expo-sensors';
 import LottieView from 'lottie-react-native';
-import stepCounterService from '../services/stepCounter';
+import { stepCounterService } from '../services/index';
 
 const CALORIES_PER_STEP = 0.05;
 
