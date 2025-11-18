@@ -24,7 +24,7 @@ import CommentsModal from '../components/modals/CommentsModal';
 import { useAuth } from '../contexts';
 
 export default function FeedScreen() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { posts, loading, error, hasMore, getFeed, resetPagination, deletePost } = usePosts();
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -48,7 +48,24 @@ export default function FeedScreen() {
         status: err.status,
         url: err.url,
       });
-      
+
+      // Handle 401 - Authentication failed
+      if (err.status === 401 || err.isAuthError) {
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please login again.',
+          [
+            {
+              text: 'OK',
+              onPress: async () => {
+                await logout();
+              },
+            },
+          ]
+        );
+        return;
+      }
+
       // Show user-friendly error message for 404
       if (err.status === 404) {
         Alert.alert(
@@ -127,7 +144,7 @@ export default function FeedScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <FlatList
         data={posts}
         renderItem={renderPost}
@@ -171,7 +188,7 @@ export default function FeedScreen() {
       >
         <Ionicons name="add" size={Sizes.icon.xl} color={Colors.text.inverse} />
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 

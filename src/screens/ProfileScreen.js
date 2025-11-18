@@ -19,6 +19,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile, useWeight } from '../hooks';
 import { Button, Card } from '../components';
+import EditProfileModal from '../components/modals/EditProfileModal';
+import NotificationsModal from '../components/modals/NotificationsModal';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../styles';
 import moment from 'moment';
 
@@ -28,6 +30,8 @@ export default function ProfileScreen() {
   const { weights, latestWeight, loading: weightLoading, getWeightHistory, getLatestWeight } = useWeight();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     loadProfileData();
@@ -71,6 +75,31 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleEditProfile = () => {
+    setShowEditProfile(true);
+  };
+
+  const handleNotifications = () => {
+    setShowNotifications(true);
+  };
+
+  const handleHelpSupport = () => {
+    Alert.alert(
+      'Help & Support',
+      'Need help? Contact us:\n\n' +
+      'Email: support@bkfitness.com\n' +
+      'Phone: +92 300 1234567\n' +
+      'Hours: Mon-Fri 9AM-6PM\n\n' +
+      'Visit our website for FAQs and tutorials.',
+      [
+        {
+          text: 'OK',
+          style: 'default',
+        },
+      ]
+    );
+  };
+
   const getUserInitials = () => {
     if (user?.name) {
       return user.name
@@ -86,7 +115,7 @@ export default function ProfileScreen() {
   const isLoading = profileLoading || weightLoading;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -246,19 +275,19 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
           <Card variant="outlined" padding="none" style={styles.settingsCard}>
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity style={styles.settingItem} onPress={handleEditProfile}>
               <Ionicons name="person-outline" size={Sizes.icon.m} color={Colors.text.primary} />
               <Text style={styles.settingText}>Edit Profile</Text>
               <Ionicons name="chevron-forward" size={Sizes.icon.s} color={Colors.text.secondary} />
             </TouchableOpacity>
             <View style={styles.settingDivider} />
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity style={styles.settingItem} onPress={handleNotifications}>
               <Ionicons name="notifications-outline" size={Sizes.icon.m} color={Colors.text.primary} />
               <Text style={styles.settingText}>Notifications</Text>
               <Ionicons name="chevron-forward" size={Sizes.icon.s} color={Colors.text.secondary} />
             </TouchableOpacity>
             <View style={styles.settingDivider} />
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity style={styles.settingItem} onPress={handleHelpSupport}>
               <Ionicons name="help-circle-outline" size={Sizes.icon.m} color={Colors.text.primary} />
               <Text style={styles.settingText}>Help & Support</Text>
               <Ionicons name="chevron-forward" size={Sizes.icon.s} color={Colors.text.secondary} />
@@ -277,7 +306,22 @@ export default function ProfileScreen() {
           />
         </View>
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Modals */}
+      <EditProfileModal
+        visible={showEditProfile}
+        onClose={() => {
+          setShowEditProfile(false);
+          loadProfileData(); // Refresh profile data after editing
+        }}
+        profile={profile}
+      />
+
+      <NotificationsModal
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
+    </View>
   );
 }
 

@@ -163,7 +163,7 @@ export default function StepTrackerScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <View style={styles.animationContainer}>
                 {isTracking ? (
                     <LottieView
@@ -241,7 +241,7 @@ export default function StepTrackerScreen() {
                     </TouchableOpacity>
                 )}
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 

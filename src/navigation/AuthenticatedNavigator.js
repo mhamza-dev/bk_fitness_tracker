@@ -17,9 +17,9 @@ const AuthenticatedNavigator = () => {
             screenOptions={{
                 headerStyle: {
                     backgroundColor: Colors.navigation.headerBackground,
-                    elevation: 0,
-                    shadowOpacity: 0,
-                    borderBottomWidth: 0,
+                    paddingBottom: Sizes.s,
+                    borderBottomWidth: 1,
+                    borderBottomColor: Colors.border.light,
                 },
                 headerTintColor: Colors.navigation.headerText,
                 headerTitleStyle: {
@@ -27,7 +27,7 @@ const AuthenticatedNavigator = () => {
                     color: Colors.navigation.headerText,
                     fontSize: Sizes.fontSize.xl,
                 },
-                headerLeft: () => <HeaderLogo />,
+                headerLeft: () => <HeaderLogo logoStyle={{ width: Sizes.image.xxxs, height: Sizes.image.xxxs }} />,
                 headerLeftContainerStyle: {
                     paddingLeft: Sizes.m,
                 },

@@ -34,6 +34,9 @@ export const AuthProvider = ({ children }) => {
       const token = await getAuthToken();
 
       if (token) {
+        // Ensure token is set in axios defaults
+        await setAuthToken(token);
+
         // Verify token by fetching current user
         try {
           const userData = await authAPI.getCurrentUser();
@@ -47,6 +50,8 @@ export const AuthProvider = ({ children }) => {
           setUser(null);
         }
       } else {
+        // Ensure axios defaults are cleared if no token
+        await removeAuthToken();
         setIsAuthenticated(false);
         setUser(null);
       }

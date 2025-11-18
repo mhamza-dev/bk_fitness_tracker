@@ -5,7 +5,7 @@ import { Colors, Sizes, FontWeight, BorderRadius, Shadows } from '../styles';
 
 export default function StatsScreen() {
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <Text style={styles.title}>Statistics</Text>
         <View style={styles.statCard}>
@@ -25,7 +25,7 @@ export default function StatsScreen() {
           <Text style={styles.statValue}>0 min</Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

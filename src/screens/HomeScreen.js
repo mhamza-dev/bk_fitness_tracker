@@ -106,7 +106,7 @@ export default function HomeScreen() {
       const endDate = moment().format('YYYY-MM-DD');
       const startDate = moment().subtract(7, 'days').format('YYYY-MM-DD');
       const progress = await getWeightProgress(7);
-      
+
       if (progress && progress.length >= 2) {
         const firstWeight = progress[0].weight;
         const lastWeight = progress[progress.length - 1].weight;

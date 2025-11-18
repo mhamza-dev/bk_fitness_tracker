@@ -118,6 +118,7 @@ export const Sizes = {
   },
 
   image: {
+    xxxs: 40,
     xxs: 60,
     xs: 100,
     s: 120,

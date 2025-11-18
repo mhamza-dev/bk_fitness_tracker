@@ -66,11 +66,14 @@ apiClient.interceptors.request.use(
         const token = await getAuthToken();
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
-        }
-
-        // Log request for debugging (only in development)
-        if (__DEV__) {
-            console.log(`API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+            // Log token presence for debugging (only in development, don't log full token)
+            if (__DEV__) {
+                console.log(`API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url} - Token: ${token ? 'Present' : 'Missing'}`);
+            }
+        } else {
+            if (__DEV__) {
+                console.log(`API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url} - No token found`);
+            }
         }
 
         return config;
@@ -134,6 +137,20 @@ apiClient.interceptors.response.use(
 
         // Handle axios errors
         if (error.response) {
+            // Handle 401 Unauthorized - token is invalid or expired
+            if (error.response.status === 401) {
+                // Remove invalid token
+                await removeAuthToken();
+
+                // Create error with helpful message
+                const message = error.response.data?.msg || error.response.data?.message || error.response.data?.error || 'Authentication failed. Please login again.';
+                const authError = new Error(message);
+                authError.status = 401;
+                authError.data = error.response.data;
+                authError.isAuthError = true;
+                return Promise.reject(authError);
+            }
+
             // Server responded with error status
             const message = error.response.data?.message || error.response.data?.error || `Request failed with status ${error.response.status}`;
             const apiError = new Error(message);
