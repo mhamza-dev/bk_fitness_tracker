@@ -3,7 +3,7 @@
  * Modal for managing notification settings
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     StyleSheet,
     View,
@@ -11,34 +11,79 @@ import {
     TouchableOpacity,
     Switch,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
+import { Formik } from 'formik';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../../styles';
-import { Card, Modal } from '../index';
+import { Card, Modal, Button } from '../index';
+import { useNotificationPreferences } from '../../hooks';
+import { notificationPreferencesSchema } from '../../validations/notificationSchemas';
+
+const defaultPreferences = {
+    pushNotifications: true,
+    emailNotifications: false,
+    stepReminders: true,
+    mealReminders: true,
+    workoutReminders: true,
+    weightReminders: false,
+    socialUpdates: true,
+};
 
 export default function NotificationsModal({ visible, onClose }) {
-    const [settings, setSettings] = useState({
-        pushNotifications: true,
-        emailNotifications: false,
-        stepReminders: true,
-        mealReminders: true,
-        workoutReminders: true,
-        weightReminders: false,
-        socialUpdates: true,
-    });
+    const {
+        preferences,
+        loading: preferencesLoading,
+        fetchPreferences,
+        createNotificationPreferences,
+        updateNotificationPreferences,
+    } = useNotificationPreferences();
 
-    const toggleSetting = (key) => {
-        setSettings((prev) => ({
-            ...prev,
-            [key]: !prev[key],
-        }));
+    const [initialValues, setInitialValues] = useState(defaultPreferences);
+
+    useEffect(() => {
+        if (visible) {
+            loadPreferences();
+        }
+    }, [visible]);
+
+    const loadPreferences = async () => {
+        try {
+            const data = await fetchPreferences();
+            if (data) {
+                setInitialValues({
+                    pushNotifications: data.pushNotifications ?? defaultPreferences.pushNotifications,
+                    emailNotifications: data.emailNotifications ?? defaultPreferences.emailNotifications,
+                    stepReminders: data.stepReminders ?? defaultPreferences.stepReminders,
+                    mealReminders: data.mealReminders ?? defaultPreferences.mealReminders,
+                    workoutReminders: data.workoutReminders ?? defaultPreferences.workoutReminders,
+                    weightReminders: data.weightReminders ?? defaultPreferences.weightReminders,
+                    socialUpdates: data.socialUpdates ?? defaultPreferences.socialUpdates,
+                });
+            } else {
+                setInitialValues(defaultPreferences);
+            }
+        } catch (error) {
+            // If preferences don't exist, use defaults
+            setInitialValues(defaultPreferences);
+        }
     };
 
-    const handleSave = () => {
-        // TODO: Save notification settings to backend
-        // For now, just show success message
-        Alert.alert('Success', 'Notification settings saved!');
-        onClose();
+    const handleSubmit = async (values, { setSubmitting }) => {
+        try {
+            if (preferences) {
+                await updateNotificationPreferences(values);
+            } else {
+                await createNotificationPreferences(values);
+            }
+            Alert.alert('Success', 'Notification settings saved!');
+            onClose();
+        } catch (error) {
+            console.error('Error saving notification preferences:', error);
+            Alert.alert('Error', error.message || 'Failed to save notification settings. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const NotificationItem = ({ icon, label, description, value, onToggle }) => (
@@ -61,6 +106,22 @@ export default function NotificationsModal({ visible, onClose }) {
         </View>
     );
 
+    if (preferencesLoading && !preferences) {
+        return (
+            <Modal
+                visible={visible}
+                onClose={onClose}
+                title="Notifications"
+                maxHeight="85%"
+            >
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <Text style={styles.loadingText}>Loading preferences...</Text>
+                </View>
+            </Modal>
+        );
+    }
+
     return (
         <Modal
             visible={visible}
@@ -68,83 +129,100 @@ export default function NotificationsModal({ visible, onClose }) {
             title="Notifications"
             maxHeight="85%"
         >
-            <Card variant="outlined" padding="medium" style={styles.settingsCard}>
-                <NotificationItem
-                    icon="notifications"
-                    label="Push Notifications"
-                    description="Receive push notifications on your device"
-                    value={settings.pushNotifications}
-                    onToggle={() => toggleSetting('pushNotifications')}
-                />
+            <Formik
+                initialValues={initialValues}
+                validationSchema={notificationPreferencesSchema}
+                enableReinitialize
+                onSubmit={handleSubmit}
+            >
+                {({ handleSubmit, isSubmitting, values, setFieldValue }) => (
+                    <>
+                        <Card variant="outlined" padding="medium" style={styles.settingsCard}>
+                            <NotificationItem
+                                icon="notifications"
+                                label="Push Notifications"
+                                description="Receive push notifications on your device"
+                                value={values.pushNotifications}
+                                onToggle={() => setFieldValue('pushNotifications', !values.pushNotifications)}
+                            />
 
-                <View style={styles.divider} />
+                            <View style={styles.divider} />
 
-                <NotificationItem
-                    icon="mail"
-                    label="Email Notifications"
-                    description="Receive notifications via email"
-                    value={settings.emailNotifications}
-                    onToggle={() => toggleSetting('emailNotifications')}
-                />
+                            <NotificationItem
+                                icon="mail"
+                                label="Email Notifications"
+                                description="Receive notifications via email"
+                                value={values.emailNotifications}
+                                onToggle={() => setFieldValue('emailNotifications', !values.emailNotifications)}
+                            />
 
-                <View style={styles.divider} />
+                            <View style={styles.divider} />
 
-                <Text style={styles.sectionTitle}>Reminders</Text>
+                            <Text style={styles.sectionTitle}>Reminders</Text>
 
-                <NotificationItem
-                    icon="footsteps"
-                    label="Step Reminders"
-                    description="Remind me to reach my daily step goal"
-                    value={settings.stepReminders}
-                    onToggle={() => toggleSetting('stepReminders')}
-                />
+                            <NotificationItem
+                                icon="footsteps"
+                                label="Step Reminders"
+                                description="Remind me to reach my daily step goal"
+                                value={values.stepReminders}
+                                onToggle={() => setFieldValue('stepReminders', !values.stepReminders)}
+                            />
 
-                <View style={styles.divider} />
+                            <View style={styles.divider} />
 
-                <NotificationItem
-                    icon="restaurant"
-                    label="Meal Reminders"
-                    description="Remind me to log my meals"
-                    value={settings.mealReminders}
-                    onToggle={() => toggleSetting('mealReminders')}
-                />
+                            <NotificationItem
+                                icon="restaurant"
+                                label="Meal Reminders"
+                                description="Remind me to log my meals"
+                                value={values.mealReminders}
+                                onToggle={() => setFieldValue('mealReminders', !values.mealReminders)}
+                            />
 
-                <View style={styles.divider} />
+                            <View style={styles.divider} />
 
-                <NotificationItem
-                    icon="fitness"
-                    label="Workout Reminders"
-                    description="Remind me to do my workouts"
-                    value={settings.workoutReminders}
-                    onToggle={() => toggleSetting('workoutReminders')}
-                />
+                            <NotificationItem
+                                icon="fitness"
+                                label="Workout Reminders"
+                                description="Remind me to do my workouts"
+                                value={values.workoutReminders}
+                                onToggle={() => setFieldValue('workoutReminders', !values.workoutReminders)}
+                            />
 
-                <View style={styles.divider} />
+                            <View style={styles.divider} />
 
-                <NotificationItem
-                    icon="scale"
-                    label="Weight Reminders"
-                    description="Remind me to log my weight"
-                    value={settings.weightReminders}
-                    onToggle={() => toggleSetting('weightReminders')}
-                />
+                            <NotificationItem
+                                icon="scale"
+                                label="Weight Reminders"
+                                description="Remind me to log my weight"
+                                value={values.weightReminders}
+                                onToggle={() => setFieldValue('weightReminders', !values.weightReminders)}
+                            />
 
-                <View style={styles.divider} />
+                            <View style={styles.divider} />
 
-                <Text style={styles.sectionTitle}>Social</Text>
+                            <Text style={styles.sectionTitle}>Social</Text>
 
-                <NotificationItem
-                    icon="people"
-                    label="Social Updates"
-                    description="Notifications about likes, comments, and follows"
-                    value={settings.socialUpdates}
-                    onToggle={() => toggleSetting('socialUpdates')}
-                />
-            </Card>
+                            <NotificationItem
+                                icon="people"
+                                label="Social Updates"
+                                description="Notifications about likes, comments, and follows"
+                                value={values.socialUpdates}
+                                onToggle={() => setFieldValue('socialUpdates', !values.socialUpdates)}
+                            />
+                        </Card>
 
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Save Settings</Text>
-            </TouchableOpacity>
+                        <View style={styles.buttonContainer}>
+                            <Button
+                                title={isSubmitting || preferencesLoading ? 'Saving...' : 'Save Settings'}
+                                onPress={handleSubmit}
+                                disabled={isSubmitting || preferencesLoading}
+                                fullWidth
+                                size="large"
+                            />
+                        </View>
+                    </>
+                )}
+            </Formik>
         </Modal>
     );
 }
@@ -192,17 +270,18 @@ const styles = StyleSheet.create({
         marginTop: Sizes.m,
         marginBottom: Sizes.s,
     },
-    saveButton: {
+    buttonContainer: {
         marginTop: Sizes.xl,
-        backgroundColor: Colors.primary,
-        paddingVertical: Sizes.m,
-        paddingHorizontal: Sizes.xl,
-        borderRadius: BorderRadius.button.m,
-        alignItems: 'center',
+        marginBottom: Sizes.xxxl,
     },
-    saveButtonText: {
+    loadingContainer: {
+        padding: Sizes.xxxl,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    loadingText: {
+        marginTop: Sizes.m,
         fontSize: Sizes.fontSize.m,
-        fontWeight: FontWeight.bold,
-        color: Colors.text.inverse,
+        color: Colors.text.secondary,
     },
 });

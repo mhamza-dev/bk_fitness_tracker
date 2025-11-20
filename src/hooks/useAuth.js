@@ -17,20 +17,28 @@ export const useAuthAPI = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await authAPI.login(email, password);
-      
-      // Extract user data and token from response
-      const userData = response.user || (response.token ? { ...response, token: undefined } : response);
       const token = response.token;
-      
+
       if (!token) {
         throw new Error('No authentication token received');
       }
-      
+
+      // Fetch complete user data after login
+      let userData;
+      try {
+        const currentUserResponse = await authAPI.getCurrentUser();
+        userData = currentUserResponse.user || currentUserResponse;
+      } catch (error) {
+        console.error('Error fetching user data after login:', error);
+        // Fallback to response data if getCurrentUser fails
+        userData = response.user || (response.token ? { ...response, token: undefined } : response);
+      }
+
       // Update auth context
       await loginContext(userData, token);
-      
+
       return response;
     } catch (err) {
       const errorMessage = err.message || 'Login failed. Please check your credentials.';
@@ -45,15 +53,15 @@ export const useAuthAPI = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await authAPI.register(userData);
-      
+
       // If token is returned, automatically log in the user
       if (response.token && (response.user || response)) {
         const userDataFromResponse = response.user || response;
         await loginContext(userDataFromResponse, response.token);
       }
-      
+
       return response;
     } catch (err) {
       const errorMessage = err.message || 'Registration failed. Please try again.';

@@ -562,6 +562,27 @@ export const followAPI = {
     },
 };
 
+/**
+ * Notification Preferences API
+ */
+export const notificationPreferencesAPI = {
+    getNotificationPreferences: async () => {
+        return await apiClient.get('/notification-preferences');
+    },
+
+    createNotificationPreferences: async (preferences) => {
+        return await apiClient.post('/notification-preferences', preferences);
+    },
+
+    updateNotificationPreferences: async (preferences) => {
+        return await apiClient.put('/notification-preferences', preferences);
+    },
+
+    deleteNotificationPreferences: async () => {
+        return await apiClient.delete('/notification-preferences');
+    },
+};
+
 export default {
     apiClient,
     getAuthToken,
@@ -578,4 +599,5 @@ export default {
     commentsAPI,
     likesAPI,
     followAPI,
+    notificationPreferencesAPI,
 };

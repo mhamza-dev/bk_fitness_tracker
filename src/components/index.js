@@ -13,4 +13,6 @@ export { default as Text } from './Text';
 export { default as HeaderLogo } from './HeaderLogo';
 export { default as PostCard } from './PostCard';
 export { default as Modal } from './Modal';
+export { default as AllergyManager } from './AllergyManager';
+export { default as PhysicalIssueManager } from './PhysicalIssueManager';
 

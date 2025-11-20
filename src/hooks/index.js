@@ -14,4 +14,5 @@ export { usePosts } from './usePosts';
 export { useComments } from './useComments';
 export { useLikes } from './useLikes';
 export { useFollow } from './useFollow';
+export { useNotificationPreferences } from './useNotificationPreferences';
 
