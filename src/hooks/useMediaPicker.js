@@ -39,7 +39,7 @@ export const useMediaPicker = (options = {}) => {
             }
 
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.All, // Allow both images and videos
+                mediaTypes: ['images', 'videos'], // Allow both images and videos
                 allowsEditing: true,
                 aspect,
                 quality: imageQuality,
@@ -73,7 +73,7 @@ export const useMediaPicker = (options = {}) => {
             }
 
             const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: "images",
                 allowsEditing: true,
                 aspect,
                 quality: imageQuality,
@@ -104,7 +104,7 @@ export const useMediaPicker = (options = {}) => {
             }
 
             const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+                mediaTypes: "videos",
                 allowsEditing: true,
                 aspect,
                 quality: videoQuality,

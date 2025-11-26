@@ -15,7 +15,6 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile, useWeight, useMediaPicker } from '../hooks';
@@ -42,7 +41,7 @@ export default function ProfileScreen() {
   const [showUpdatePicture, setShowUpdatePicture] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
 
-  // Use media picker for avatar updates
+  // Use media picker for avatar updates (same config as CreatePostModal)
   const {
     pickMedia,
     takePhoto,
@@ -144,12 +143,18 @@ export default function ProfileScreen() {
   };
 
   const handleChooseFromGallery = async () => {
-    setShowUpdatePicture(false);
-    const result = await pickMedia();
-    if (result && result.type === 'image') {
-      await uploadAvatar(result.uri, 'image');
-    } else if (result && result.type === 'video') {
-      Alert.alert('Invalid Selection', 'Profile pictures must be images, not videos.');
+    try {
+      const result = await pickMedia();
+      if (result && result.type === 'image') {
+        await uploadAvatar(result.uri, 'image');
+      } else if (result && result.type === 'video') {
+        Alert.alert('Invalid Selection', 'Profile pictures must be images, not videos.');
+      }
+    } catch (error) {
+      console.error('Error choosing from gallery:', error);
+      Alert.alert('Error', error.message || 'Failed to choose from gallery');
+    } finally {
+      setShowUpdatePicture(false);
     }
   };
 
