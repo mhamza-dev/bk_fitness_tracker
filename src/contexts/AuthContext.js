@@ -3,8 +3,13 @@
  * Manages authentication state across the app
  */
 
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { getAuthToken, removeAuthToken, setAuthToken, authAPI } from '../services/api.js';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { getAuthToken, removeAuthToken, setAuthToken, authAPI, getAuthEventEmitter, initializeAuthToken } from '../services/api.js';
+import {
+  useProfileStore,
+  useNotificationPreferencesStore,
+  useWeightStore
+} from '../stores';
 
 const AuthContext = createContext(null);
 
@@ -21,16 +26,12 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
 
-  /**
-   * Check if user is authenticated on app start
-   */
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
 
   const checkAuthStatus = async () => {
     try {
       setIsLoading(true);
+      // Initialize token in axios headers from AsyncStorage
+      await initializeAuthToken();
       const token = await getAuthToken();
 
       if (token) {
@@ -69,19 +70,14 @@ export const AuthProvider = ({ children }) => {
    */
   const login = async (userData, token) => {
     try {
-      console.log('AuthContext.login called with:', { userData, hasToken: !!token });
-
       // Ensure token is stored (it should already be stored by API service, but double-check)
       if (token) {
         await setAuthToken(token);
-        console.log('Token stored successfully');
       }
 
       // Update state
       setUser(userData);
       setIsAuthenticated(true);
-
-      console.log('Auth state updated - isAuthenticated set to true');
     } catch (error) {
       console.error('Error during login:', error);
       throw error;
@@ -91,7 +87,7 @@ export const AuthProvider = ({ children }) => {
   /**
    * Logout user
    */
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       // Call logout API (optional - backend may handle token invalidation)
       try {
@@ -100,6 +96,11 @@ export const AuthProvider = ({ children }) => {
         console.error('Logout API error:', error);
         // Continue with local logout even if API fails
       }
+
+      // Clear all Zustand stores
+      useProfileStore.getState().clearProfile();
+      useNotificationPreferencesStore.getState().clearPreferences();
+      useWeightStore.getState().clearWeight();
 
       // Remove token and clear state
       await removeAuthToken();
@@ -111,7 +112,7 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setUser(null);
     }
-  };
+  }, []);
 
   /**
    * Update user data
@@ -119,6 +120,27 @@ export const AuthProvider = ({ children }) => {
   const updateUser = (userData) => {
     setUser(userData);
   };
+
+  /**
+   * Check if user is authenticated on app start
+   */
+  useEffect(() => {
+    checkAuthStatus();
+
+    // Listen for unauthorized events from API service
+    const authEventEmitter = getAuthEventEmitter();
+    const handleUnauthorized = () => {
+      console.log('Unauthorized event received, logging out user');
+      logout();
+    };
+
+    authEventEmitter.on('unauthorized', handleUnauthorized);
+
+    // Cleanup listener on unmount
+    return () => {
+      authEventEmitter.off('unauthorized', handleUnauthorized);
+    };
+  }, [logout]);
 
   const value = {
     isAuthenticated,

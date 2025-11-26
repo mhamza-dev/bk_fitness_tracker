@@ -15,4 +15,5 @@ export { useComments } from './useComments';
 export { useLikes } from './useLikes';
 export { useFollow } from './useFollow';
 export { useNotificationPreferences } from './useNotificationPreferences';
+export { useMediaPicker } from './useMediaPicker';
 

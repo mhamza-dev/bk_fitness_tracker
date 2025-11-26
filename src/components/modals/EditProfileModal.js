@@ -10,6 +10,7 @@ import {
     Text,
     TouchableOpacity,
     Alert,
+    Image,
 } from 'react-native';
 import { Formik } from 'formik';
 import { useProfile } from '../../hooks';

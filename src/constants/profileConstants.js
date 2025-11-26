@@ -44,7 +44,7 @@ export const PHYSICAL_ISSUE_TYPES = ['chronic', 'temporary', 'condition'];
 
 export const WEIGHT_UNITS = ['kg', 'lbs'];
 
-export const HEIGHT_UNITS = ['cm', 'ft', 'inches'];
+export const HEIGHT_UNITS = ['cm', 'ft'];
 
 export const GENDER_VALUES = GENDER_OPTIONS.map(option => option.value);
 

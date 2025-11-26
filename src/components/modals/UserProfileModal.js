@@ -178,14 +178,32 @@ export default function UserProfileModal({ visible, userId, onClose }) {
                 <FlatList
                   data={posts}
                   numColumns={3}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.postThumbnail}>
-                      <Image
-                        source={{ uri: item.image || item.images?.[0] }}
-                        style={styles.thumbnailImage}
-                      />
-                    </TouchableOpacity>
-                  )}
+                  renderItem={({ item }) => {
+                    // Get first media item from postMedia array (supporting legacy fields for backward compatibility)
+                    const firstMedia = item.postMedia?.[0] || 
+                      (item.imageUrl ? { mediaUrl: item.imageUrl, mediaType: 'image' } : null) ||
+                      (item.image ? { mediaUrl: item.image, mediaType: 'image' } : null) ||
+                      (item.images?.[0] ? { mediaUrl: item.images[0], mediaType: 'image' } : null);
+                    
+                    return (
+                      <TouchableOpacity style={styles.postThumbnail}>
+                        {firstMedia && firstMedia.mediaType === 'video' ? (
+                          <View style={styles.thumbnailVideoPlaceholder}>
+                            <Ionicons name="videocam" size={Sizes.icon.m} color={Colors.text.secondary} />
+                          </View>
+                        ) : firstMedia ? (
+                          <Image
+                            source={{ uri: firstMedia.mediaUrl }}
+                            style={styles.thumbnailImage}
+                          />
+                        ) : (
+                          <View style={styles.thumbnailPlaceholder}>
+                            <Ionicons name="image-outline" size={Sizes.icon.m} color={Colors.text.secondary} />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  }}
                   keyExtractor={(item) => item._id || item.id}
                   scrollEnabled={false}
                 />
@@ -284,6 +302,20 @@ const styles = StyleSheet.create({
   thumbnailImage: {
     width: '100%',
     height: '100%',
+  },
+  thumbnailVideoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: Colors.background.tertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbnailPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: Colors.background.tertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

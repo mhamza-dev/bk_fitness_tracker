@@ -8,7 +8,34 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
-console.log('API_BASE_URL:', API_BASE_URL);
+// Simple event emitter for auth events
+class SimpleEventEmitter {
+    constructor() {
+        this.events = {};
+    }
+
+    on(event, callback) {
+        if (!this.events[event]) {
+            this.events[event] = [];
+        }
+        this.events[event].push(callback);
+    }
+
+    off(event, callback) {
+        if (this.events[event]) {
+            this.events[event] = this.events[event].filter(cb => cb !== callback);
+        }
+    }
+
+    emit(event, ...args) {
+        if (this.events[event]) {
+            this.events[event].forEach(callback => callback(...args));
+        }
+    }
+}
+
+// Create event emitter for auth events
+const authEventEmitter = new SimpleEventEmitter();
 
 // Create axios instance
 const apiClient = axios.create({
@@ -37,13 +64,32 @@ export const getAuthToken = async () => {
  */
 export const setAuthToken = async (token) => {
     try {
-        await AsyncStorage.setItem('authToken', token);
-        // Update axios default header
         if (token) {
+            await AsyncStorage.setItem('authToken', token);
+            // Update axios default header
             apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        } else {
+            // If token is null/undefined, remove it
+            await removeAuthToken();
         }
     } catch (error) {
         console.error('Error setting auth token:', error);
+    }
+};
+
+/**
+ * Initialize token from storage on app start
+ */
+export const initializeAuthToken = async () => {
+    try {
+        const token = await getAuthToken();
+        if (token) {
+            apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        }
+        return token;
+    } catch (error) {
+        console.error('Error initializing auth token:', error);
+        return null;
     }
 };
 
@@ -60,20 +106,51 @@ export const removeAuthToken = async () => {
     }
 };
 
-// Request interceptor to add auth token to requests
+/**
+ * Get auth event emitter for listening to auth events
+ */
+export const getAuthEventEmitter = () => {
+    return authEventEmitter;
+};
+
+// List of endpoints that don't require authentication
+const PUBLIC_ENDPOINTS = [
+    '/auth/login',
+    '/auth/register',
+    '/auth/forgot-password',
+    '/auth/reset-password',
+];
+
+// Check if endpoint is public
+const isPublicEndpoint = (url) => {
+    return PUBLIC_ENDPOINTS.some(endpoint => url.includes(endpoint));
+};
+
+// Request interceptor to add auth token to requests and check for token
 apiClient.interceptors.request.use(
     async (config) => {
         const token = await getAuthToken();
-        if (token) {
+
+        // Log token presence for debugging
+        if (__DEV__) {
+            console.log(`API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url} - ${token ? 'Token: Present' : 'No token found'}`);
+        }
+
+        // Check if endpoint requires authentication
+        if (!isPublicEndpoint(config.url)) {
+            if (!token) {
+                // No token for protected endpoint - reject the request
+                const error = new Error('No token, authorization denied');
+                error.status = 401;
+                error.isAuthError = true;
+                error.config = config;
+                return Promise.reject(error);
+            }
+            // Add token to request
             config.headers.Authorization = `Bearer ${token}`;
-            // Log token presence for debugging (only in development, don't log full token)
-            if (__DEV__) {
-                console.log(`API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url} - Token: ${token ? 'Present' : 'Missing'}`);
-            }
-        } else {
-            if (__DEV__) {
-                console.log(`API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url} - No token found`);
-            }
+        } else if (token) {
+            // Even for public endpoints, add token if available
+            config.headers.Authorization = `Bearer ${token}`;
         }
 
         return config;
@@ -142,6 +219,9 @@ apiClient.interceptors.response.use(
                 // Remove invalid token
                 await removeAuthToken();
 
+                // Emit logout event to trigger navigation to login
+                authEventEmitter.emit('unauthorized');
+
                 // Create error with helpful message
                 const message = error.response.data?.msg || error.response.data?.message || error.response.data?.error || 'Authentication failed. Please login again.';
                 const authError = new Error(message);
@@ -157,6 +237,11 @@ apiClient.interceptors.response.use(
             apiError.status = error.response.status;
             apiError.data = error.response.data;
             return Promise.reject(apiError);
+        } else if (error.isAuthError && error.status === 401) {
+            // Handle case where request was rejected due to missing token
+            await removeAuthToken();
+            authEventEmitter.emit('unauthorized');
+            return Promise.reject(error);
         } else if (error.request) {
             // Request was made but no response received
             const baseURL = API_BASE_URL;
@@ -185,16 +270,20 @@ apiClient.interceptors.response.use(
 export const authAPI = {
     register: async (userData) => {
         const response = await apiClient.post('/auth/register', userData);
-        if (response.token) {
-            await setAuthToken(response.token);
+        // Response interceptor returns response.data, so token is directly on response
+        const token = response?.token || response?.data?.token;
+        if (token) {
+            await setAuthToken(token);
         }
         return response;
     },
 
     login: async (email, password) => {
         const response = await apiClient.post('/auth/login', { email, password });
-        if (response.token) {
-            await setAuthToken(response.token);
+        // Response interceptor returns response.data, so token is directly on response
+        const token = response?.token || response?.data?.token;
+        if (token) {
+            await setAuthToken(token);
         }
         return response;
     },
@@ -457,13 +546,17 @@ export const postsAPI = {
     },
 
     createPost: async (postData) => {
-        // Handle FormData for image uploads
-        const config = {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        };
-        return await apiClient.post('/posts', postData, config);
+        // Support both FormData (legacy) and JSON payloads
+        if (postData instanceof FormData) {
+            const config = {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            };
+            return await apiClient.post('/posts', postData, config);
+        }
+        // Default to JSON body (e.g. when using Cloudinary image URLs)
+        return await apiClient.post('/posts', postData);
     },
 
     updatePost: async (postId, updateData) => {
@@ -588,6 +681,8 @@ export default {
     getAuthToken,
     setAuthToken,
     removeAuthToken,
+    initializeAuthToken,
+    getAuthEventEmitter,
     authAPI,
     profileAPI,
     foodAPI,

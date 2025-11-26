@@ -13,25 +13,44 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { useProfile, useWeight } from '../hooks';
+import { useProfile, useWeight, useMediaPicker } from '../hooks';
+import { uploadMediaToCloudinary } from '../services/uploadService';
 import { Button, Card } from '../components';
 import EditProfileModal from '../components/modals/EditProfileModal';
 import NotificationsModal from '../components/modals/NotificationsModal';
+import ViewProfilePictureModal from '../components/modals/ViewProfilePictureModal';
+import ProfilePictureOptionsModal from '../components/modals/ProfilePictureOptionsModal';
+import UpdateProfilePictureModal from '../components/modals/UpdateProfilePictureModal';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../styles';
 import moment from 'moment';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
-  const { profile, loading: profileLoading, fetchProfile } = useProfile();
+  const { profile, loading: profileLoading, fetchProfile, updateProfile } = useProfile();
   const { weights, latestWeight, loading: weightLoading, getWeightHistory, getLatestWeight } = useWeight();
 
   const [refreshing, setRefreshing] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showViewPicture, setShowViewPicture] = useState(false);
+  const [showPictureOptions, setShowPictureOptions] = useState(false);
+  const [showUpdatePicture, setShowUpdatePicture] = useState(false);
+  const [updatingAvatar, setUpdatingAvatar] = useState(false);
+
+  // Use media picker for avatar updates
+  const {
+    pickMedia,
+    takePhoto,
+    clearMedia,
+  } = useMediaPicker({
+    aspect: [1, 1],
+    imageQuality: 0.8,
+  });
 
   useEffect(() => {
     loadProfileData();
@@ -112,6 +131,73 @@ export default function ProfileScreen() {
     return 'BK';
   };
 
+  const handleAvatarPress = () => {
+    setShowPictureOptions(true);
+  };
+
+  const handleTakePhoto = async () => {
+    setShowUpdatePicture(false);
+    const result = await takePhoto();
+    if (result) {
+      await uploadAvatar(result.uri, 'image');
+    }
+  };
+
+  const handleChooseFromGallery = async () => {
+    setShowUpdatePicture(false);
+    const result = await pickMedia();
+    if (result && result.type === 'image') {
+      await uploadAvatar(result.uri, 'image');
+    } else if (result && result.type === 'video') {
+      Alert.alert('Invalid Selection', 'Profile pictures must be images, not videos.');
+    }
+  };
+
+  const handleSelectEmoji = async (emoji) => {
+    await updateAvatarEmoji(emoji);
+  };
+
+  const updateAvatarEmoji = async (emoji) => {
+    try {
+      setUpdatingAvatar(true);
+      await updateProfile({
+        avatarEmoji: emoji,
+        avatar: undefined, // Clear image if emoji is set
+      });
+      await fetchProfile();
+      Alert.alert('Success', 'Profile picture updated successfully!');
+    } catch (error) {
+      console.error('Error updating avatar emoji:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile picture');
+    } finally {
+      setUpdatingAvatar(false);
+    }
+  };
+
+  const uploadAvatar = async (uri, type) => {
+    try {
+      setUpdatingAvatar(true);
+      const result = await uploadMediaToCloudinary(uri, type, { folder: 'bk-fitness/avatars' });
+
+      // Update profile with new avatar
+      await updateProfile({
+        avatar: result.url,
+        avatarEmoji: undefined, // Clear emoji if image is set
+      });
+
+      // Refresh profile data
+      await fetchProfile();
+      clearMedia();
+
+      Alert.alert('Success', 'Profile picture updated successfully!');
+    } catch (error) {
+      console.error('Error updating avatar:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile picture');
+    } finally {
+      setUpdatingAvatar(false);
+    }
+  };
+
   const isLoading = profileLoading || weightLoading;
 
   return (
@@ -130,9 +216,31 @@ export default function ProfileScreen() {
       >
         {/* Profile Header */}
         <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getUserInitials()}</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={handleAvatarPress}
+            disabled={updatingAvatar}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.avatar, { backgroundColor: profile?.avatar || profile?.avatarEmoji ? 'transparent' : Colors.primary }]}>
+              {profile?.avatar && typeof profile.avatar === 'string' && profile.avatar.trim() ? (
+                <Image source={{ uri: profile.avatar }} style={styles.avatarImage} />
+              ) : profile?.avatarEmoji && typeof profile.avatarEmoji === 'string' && profile.avatarEmoji.trim() ? (
+                <Text style={styles.avatarEmoji}>{profile.avatarEmoji}</Text>
+              ) : (
+                <Text style={styles.avatarText}>{getUserInitials()}</Text>
+              )}
+            </View>
+            {updatingAvatar ? (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+              </View>
+            ) : (
+              <View style={styles.avatarEditIcon}>
+                <Ionicons name="camera" size={Sizes.icon.m} color={Colors.text.inverse} />
+              </View>
+            )}
+          </TouchableOpacity>
           <Text style={styles.name}>{user?.name || 'User Profile'}</Text>
           <Text style={styles.email}>{user?.email || 'user@example.com'}</Text>
         </View>
@@ -321,6 +429,33 @@ export default function ProfileScreen() {
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
       />
+
+      <ViewProfilePictureModal
+        visible={showViewPicture}
+        onClose={() => setShowViewPicture(false)}
+        avatar={profile?.avatar}
+        avatarEmoji={profile?.avatarEmoji}
+        userName={user?.name}
+      />
+
+      <ProfilePictureOptionsModal
+        visible={showPictureOptions}
+        onClose={() => setShowPictureOptions(false)}
+        onView={() => setShowViewPicture(true)}
+        onUpdate={() => setShowUpdatePicture(true)}
+        avatar={profile?.avatar}
+        avatarEmoji={profile?.avatarEmoji}
+        userName={user?.name}
+      />
+
+      <UpdateProfilePictureModal
+        visible={showUpdatePicture}
+        onClose={() => setShowUpdatePicture(false)}
+        onTakePhoto={handleTakePhoto}
+        onChooseFromGallery={handleChooseFromGallery}
+        onSelectEmoji={handleSelectEmoji}
+        uploading={updatingAvatar}
+      />
     </View>
   );
 }
@@ -350,6 +485,10 @@ const styles = StyleSheet.create({
     marginBottom: Sizes.xxxl,
     paddingTop: Sizes.xl,
   },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: Sizes.l,
+  },
   avatar: {
     width: 100,
     height: 100,
@@ -357,12 +496,51 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Sizes.l,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    overflow: 'hidden',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarEditIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.background.primary,
   },
   avatarText: {
     fontSize: Sizes.fontSize.xxxl,
     fontWeight: FontWeight.bold,
     color: Colors.text.inverse,
+  },
+  avatarEmoji: {
+    fontSize: Sizes.fontSize.giant,
   },
   name: {
     fontSize: Sizes.fontSize.xxxl,

@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Modal } from 'react-native';
 import { useField } from 'formik';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -35,6 +35,7 @@ const DateInput = ({
   const [showPicker, setShowPicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempDate, setTempDate] = useState(null);
+  const [pendingDate, setPendingDate] = useState(null);
 
   // Use Formik if name is provided, otherwise use external props
   const [field, meta, helpers] = name ? useField(name) : [null, null, null];
@@ -85,24 +86,66 @@ const DateInput = ({
     }
   };
 
-  // Handle date change
+  // Handle date change - for iOS, we store the pending date and wait for confirmation
   const handleDateChange = (event, selectedDate) => {
     if (Platform.OS === 'android') {
       setShowPicker(false);
+      if (event.type === 'set' && selectedDate) {
+        // For datetime mode on Android, handle directly
+        if (mode === 'datetime') {
+          const formattedValue = formatDate(selectedDate);
+          if (name && helpers) {
+            helpers.setValue(formattedValue);
+            helpers.setTouched(true);
+          }
+          if (externalOnChange) {
+            externalOnChange(formattedValue);
+          }
+          return;
+        }
+
+        const formattedValue = formatDate(selectedDate);
+        if (name && helpers) {
+          helpers.setValue(formattedValue);
+          helpers.setTouched(true);
+        }
+        if (externalOnChange) {
+          externalOnChange(formattedValue);
+        }
+      }
+      return;
     }
 
-    if (event.type === 'set' && selectedDate) {
-      // For datetime mode on iOS, store the date and show time picker
-      if (mode === 'datetime' && Platform.OS === 'ios') {
-        setTempDate(selectedDate);
-        setShowPicker(false);
+    // For iOS, we update the pending date but don't commit until user confirms
+    if (selectedDate) {
+      setPendingDate(selectedDate);
+    } else {
+      // If no date selected, use current picker date
+      setPendingDate(pickerDate);
+    }
+  };
+
+  // Confirm date selection on iOS
+  const handleConfirmDate = () => {
+    // For datetime mode on iOS, store the date and show time picker
+    if (mode === 'datetime' && Platform.OS === 'ios') {
+      // Use pendingDate if available, otherwise use current pickerDate
+      const dateToStore = pendingDate || pickerDate || dateValue;
+      setTempDate(dateToStore);
+      setPendingDate(null);
+      setShowPicker(false);
+      // Small delay to ensure state updates before showing time picker
+      setTimeout(() => {
         setShowTimePicker(true);
-        return;
-      }
-      
-      // For Android datetime mode, the picker returns the full datetime
-      const formattedValue = formatDate(selectedDate);
-      
+      }, 100);
+      return;
+    }
+
+    // For date mode, commit the selection
+    const dateToCommit = pendingDate || pickerDate || dateValue;
+    if (dateToCommit) {
+      const formattedValue = formatDate(dateToCommit);
+
       if (name && helpers) {
         helpers.setValue(formattedValue);
         helpers.setTouched(true);
@@ -110,25 +153,60 @@ const DateInput = ({
       if (externalOnChange) {
         externalOnChange(formattedValue);
       }
-      
-      if (Platform.OS === 'ios') {
-        setShowPicker(false);
-      }
-    } else if (event.type === 'dismissed') {
+
+      setPendingDate(null);
       setShowPicker(false);
     }
   };
 
+  // Cancel date selection on iOS
+  const handleCancelDate = () => {
+    setPendingDate(null);
+    setShowPicker(false);
+  };
+
   // Handle time change for datetime mode
   const handleTimeChange = (event, selectedTime) => {
-    if (event.type === 'set' && selectedTime) {
-      const dateToUse = tempDate || dateValue;
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+      if (event.type === 'set' && selectedTime) {
+        const currentDateValue = getDateValue();
+        const dateToUse = tempDate || currentDateValue;
+        const combinedDate = new Date(dateToUse);
+        combinedDate.setHours(selectedTime.getHours());
+        combinedDate.setMinutes(selectedTime.getMinutes());
+
+        const formattedValue = formatDate(combinedDate);
+
+        if (name && helpers) {
+          helpers.setValue(formattedValue);
+          helpers.setTouched(true);
+        }
+        if (externalOnChange) {
+          externalOnChange(formattedValue);
+        }
+
+        setTempDate(null);
+      }
+      return;
+    }
+
+    // For iOS, update pending time
+    if (selectedTime) {
+      const currentDateValue = getDateValue();
+      const dateToUse = tempDate || currentDateValue;
       const combinedDate = new Date(dateToUse);
       combinedDate.setHours(selectedTime.getHours());
       combinedDate.setMinutes(selectedTime.getMinutes());
-      
-      const formattedValue = formatDate(combinedDate);
-      
+      setPendingDate(combinedDate);
+    }
+  };
+
+  // Confirm time selection on iOS
+  const handleConfirmTime = () => {
+    if (pendingDate) {
+      const formattedValue = formatDate(pendingDate);
+
       if (name && helpers) {
         helpers.setValue(formattedValue);
         helpers.setTouched(true);
@@ -136,13 +214,18 @@ const DateInput = ({
       if (externalOnChange) {
         externalOnChange(formattedValue);
       }
-      
-      setShowTimePicker(false);
+
+      setPendingDate(null);
       setTempDate(null);
-    } else if (event.type === 'dismissed') {
       setShowTimePicker(false);
-      setTempDate(null);
     }
+  };
+
+  // Cancel time selection on iOS
+  const handleCancelTime = () => {
+    setPendingDate(null);
+    setTempDate(null);
+    setShowTimePicker(false);
   };
 
   // Handle press to show picker
@@ -159,6 +242,7 @@ const DateInput = ({
 
   const displayValue = getDisplayValue();
   const dateValue = getDateValue();
+  const pickerDate = pendingDate || tempDate || dateValue;
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -205,11 +289,13 @@ const DateInput = ({
       {error && errorMessage && (
         <Text style={styles.errorText}>{errorMessage}</Text>
       )}
-      {showPicker && mode !== 'datetime' && (
+
+      {/* Android Date Picker */}
+      {showPicker && Platform.OS === 'android' && mode !== 'datetime' && (
         <DateTimePicker
           value={dateValue}
           mode={mode}
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           onChange={handleDateChange}
           minimumDate={minimumDate}
           maximumDate={maximumDate}
@@ -226,23 +312,129 @@ const DateInput = ({
           maximumDate={maximumDate}
         />
       )}
+
+      {/* iOS Date Picker with Modal and Confirm/Cancel */}
+      {showPicker && Platform.OS === 'ios' && mode !== 'datetime' && (
+        <Modal
+          transparent={true}
+          animationType="slide"
+          visible={showPicker}
+          onRequestClose={handleCancelDate}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.pickerContainer}>
+                <DateTimePicker
+                  value={pickerDate}
+                  mode={mode}
+                  display="spinner"
+                  onChange={handleDateChange}
+                  minimumDate={minimumDate}
+                  maximumDate={maximumDate}
+                  textColor={Colors.text.secondary}
+                  accentColor={Colors.primary}
+                  themeVariant="dark"
+                  style={styles.picker}
+                  {...props}
+                />
+              </View>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.modalButtonCancel}
+                  onPress={handleCancelDate}
+                >
+                  <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalButtonConfirm}
+                  onPress={handleConfirmDate}
+                >
+                  <Text style={styles.modalButtonConfirmText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
       {showPicker && mode === 'datetime' && Platform.OS === 'ios' && (
-        <DateTimePicker
-          value={dateValue}
-          mode="date"
-          display="spinner"
-          onChange={handleDateChange}
-          minimumDate={minimumDate}
-          maximumDate={maximumDate}
-        />
+        <Modal
+          transparent={true}
+          animationType="slide"
+          visible={showPicker}
+          onRequestClose={handleCancelDate}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.pickerContainer}>
+                <DateTimePicker
+                  value={pickerDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                  minimumDate={minimumDate}
+                  maximumDate={maximumDate}
+                  textColor={Colors.text.secondary}
+                  accentColor={Colors.primary}
+                  themeVariant="dark"
+                  style={styles.picker}
+                />
+              </View>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.modalButtonCancel}
+                  onPress={handleCancelDate}
+                >
+                  <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalButtonConfirm}
+                  onPress={handleConfirmDate}
+                >
+                  <Text style={styles.modalButtonConfirmText}>Next</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
       {showTimePicker && mode === 'datetime' && Platform.OS === 'ios' && (
-        <DateTimePicker
-          value={tempDate || dateValue}
-          mode="time"
-          display="spinner"
-          onChange={handleTimeChange}
-        />
+        <Modal
+          transparent={true}
+          animationType="slide"
+          visible={showTimePicker}
+          onRequestClose={handleCancelTime}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.pickerContainer}>
+                <DateTimePicker
+                  value={pendingDate || tempDate || getDateValue()}
+                  mode="time"
+                  display="spinner"
+                  onChange={handleTimeChange}
+                  textColor={Colors.text.secondary}
+                  accentColor={Colors.primary}
+                  themeVariant="dark"
+                  style={styles.picker}
+                />
+              </View>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.modalButtonCancel}
+                  onPress={handleCancelTime}
+                >
+                  <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalButtonConfirm}
+                  onPress={handleConfirmTime}
+                >
+                  <Text style={styles.modalButtonConfirmText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -297,6 +489,77 @@ const styles = StyleSheet.create({
     fontSize: Sizes.fontSize.s,
     color: Colors.error,
     marginTop: Sizes.xs,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: Colors.background.primary,
+    borderRadius: BorderRadius.l,
+    paddingBottom: Sizes.l,
+    paddingTop: Sizes.l,
+    width: '90%',
+    maxWidth: 400,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  pickerContainer: {
+    backgroundColor: Colors.background.tertiary,
+    borderRadius: BorderRadius.m,
+    paddingVertical: Sizes.m,
+    marginHorizontal: Sizes.m,
+    overflow: 'hidden',
+    position: 'relative',
+    minHeight: 220,
+  },
+  picker: {
+    backgroundColor: 'transparent',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: Sizes.l,
+    paddingTop: Sizes.m,
+    gap: Sizes.m,
+  },
+  modalButtonCancel: {
+    flex: 1,
+    paddingVertical: Sizes.m,
+    paddingHorizontal: Sizes.l,
+    backgroundColor: Colors.background.tertiary,
+    borderRadius: BorderRadius.m,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonConfirm: {
+    flex: 1,
+    paddingVertical: Sizes.m,
+    paddingHorizontal: Sizes.l,
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.m,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonCancelText: {
+    fontSize: Sizes.fontSize.m,
+    color: Colors.text.secondary,
+    fontWeight: FontWeight.medium,
+  },
+  modalButtonConfirmText: {
+    fontSize: Sizes.fontSize.m,
+    color: Colors.black,
+    fontWeight: FontWeight.bold,
   },
 });
 

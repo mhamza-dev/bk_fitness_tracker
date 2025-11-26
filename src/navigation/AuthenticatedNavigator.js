@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useProfile } from '../hooks';
+import { useProfileStore } from '../stores';
 import HomeScreen from '../screens/HomeScreen';
 import StepTrackerScreen from '../screens/StepTrackerScreen';
 import FeedScreen from '../screens/FeedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import OnboardingNavigator from './OnboardingNavigator';
 import HeaderLogo from '../components/HeaderLogo';
 import { Colors, Sizes, FontWeight } from '../styles';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
-const AuthenticatedNavigator = () => {
+const MainTabs = () => {
     return (
         <Tab.Navigator
             initialRouteName="Home"
@@ -94,5 +100,61 @@ const AuthenticatedNavigator = () => {
     );
 };
 
-export default AuthenticatedNavigator;
+const AuthenticatedNavigator = () => {
+    // Subscribe to profile store to get real-time updates
+    const profile = useProfileStore((state) => state.profile);
+    const loading = useProfileStore((state) => state.loading);
+    const fetchProfile = useProfileStore((state) => state.fetchProfile);
+    const [checkingProfile, setCheckingProfile] = useState(true);
 
+    useEffect(() => {
+        checkProfile();
+    }, []);
+
+    const checkProfile = async () => {
+        try {
+            await fetchProfile(true); // Force fetch to bypass cache
+        } catch (error) {
+            console.error('Error fetching profile:', error);
+            // If profile doesn't exist (404), that's okay - user needs onboarding
+        } finally {
+            setCheckingProfile(false);
+        }
+    };
+
+    // Show loading while checking profile
+    if (checkingProfile || loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
+    // If no profile exists, show onboarding
+    if (!profile) {
+        return (
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
+            </Stack.Navigator>
+        );
+    }
+
+    // Profile exists, show main app
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Main" component={MainTabs} />
+        </Stack.Navigator>
+    );
+};
+
+const styles = StyleSheet.create({
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: Colors.background.primary,
+    },
+});
+
+export default AuthenticatedNavigator;

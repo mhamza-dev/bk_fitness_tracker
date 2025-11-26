@@ -39,7 +39,7 @@ const GenericModal = ({
 
   // Calculate max height in pixels
   const maxHeightValue = typeof maxHeight === 'string'
-    ? (parseFloat(maxHeight) / 100) * SCREEN_HEIGHT
+    ? parseFloat(maxHeight) * SCREEN_HEIGHT
     : maxHeight;
 
   return (

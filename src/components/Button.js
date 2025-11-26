@@ -162,10 +162,10 @@ const styles = StyleSheet.create({
     fontSize: Sizes.fontSize.l,
   },
   textPrimary: {
-    color: Colors.white,
+    color: Colors.black,
   },
   textSecondary: {
-    color: Colors.white,
+    color: Colors.black,
   },
   textOutline: {
     color: Colors.primary,

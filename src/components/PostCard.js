@@ -85,7 +85,16 @@ export default function PostCard({
   };
 
   const isOwnPost = (post.user?._id || post.user?.id) === currentUserId;
-  const postImage = post.image || post.images?.[0];
+
+  // Get first media item from postMedia array (supporting legacy fields for backward compatibility)
+  const firstMedia = post.postMedia?.[0] ||
+    (post.imageUrl ? { mediaUrl: post.imageUrl, mediaType: 'image' } : null) ||
+    (post.videoUrl ? { mediaUrl: post.videoUrl, mediaType: 'video' } : null) ||
+    (post.image ? { mediaUrl: post.image, mediaType: 'image' } : null) ||
+    (post.video ? { mediaUrl: post.video, mediaType: 'video' } : null) ||
+    (post.images?.[0] ? { mediaUrl: post.images[0], mediaType: 'image' } : null) ||
+    (post.videos?.[0] ? { mediaUrl: post.videos[0], mediaType: 'video' } : null);
+
   const userName = post.user?.name || post.user?.username || 'Unknown User';
   const userAvatar = post.user?.avatar || post.user?.profilePicture;
 
@@ -121,10 +130,19 @@ export default function PostCard({
         )}
       </View>
 
-      {/* Image */}
-      {postImage && (
-        <Image source={{ uri: postImage }} style={styles.image} resizeMode="cover" />
-      )}
+      {/* Media (Image or Video) */}
+      {firstMedia ? (
+        firstMedia.mediaType === 'video' ? (
+          <View style={styles.videoContainer}>
+            <View style={styles.videoPlaceholder}>
+              <Ionicons name="videocam" size={Sizes.icon.xxl} color={Colors.text.secondary} />
+              <Text style={styles.videoText}>Video</Text>
+            </View>
+          </View>
+        ) : (
+          <Image source={{ uri: firstMedia.mediaUrl }} style={styles.image} resizeMode="cover" />
+        )
+      ) : null}
 
       {/* Actions */}
       <View style={styles.actions}>
@@ -199,7 +217,7 @@ function formatTimestamp(date) {
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
   if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-  
+
   return postDate.toLocaleDateString();
 }
 
@@ -261,6 +279,22 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 1,
     backgroundColor: Colors.background.tertiary,
+  },
+  videoContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: Colors.background.tertiary,
+  },
+  videoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoText: {
+    marginTop: Sizes.m,
+    fontSize: Sizes.fontSize.m,
+    color: Colors.text.secondary,
   },
   actions: {
     padding: Sizes.m,

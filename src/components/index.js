@@ -5,6 +5,9 @@
 
 export { default as Input } from './Input';
 export { default as DateInput } from './DateInput';
+export { default as SelectInput } from './SelectInput';
+export { default as MultiSelectInput } from './MultiSelectInput';
+export { default as UnitSelector } from './UnitSelector';
 export { default as Button } from './Button';
 export { default as Card } from './Card';
 export { default as Container } from './Container';
@@ -15,4 +18,7 @@ export { default as PostCard } from './PostCard';
 export { default as Modal } from './Modal';
 export { default as AllergyManager } from './AllergyManager';
 export { default as PhysicalIssueManager } from './PhysicalIssueManager';
+export { default as ViewProfilePictureModal } from './modals/ViewProfilePictureModal';
+export { default as ProfilePictureOptionsModal } from './modals/ProfilePictureOptionsModal';
+export { default as UpdateProfilePictureModal } from './modals/UpdateProfilePictureModal';
 

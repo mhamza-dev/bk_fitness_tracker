@@ -17,133 +17,110 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { usePosts } from '../../hooks';
+import { usePosts, useMediaPicker } from '../../hooks';
+import { uploadMediaToCloudinary, deleteFromCloudinary } from '../../services/uploadService';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../../styles';
-import { Input, Button } from '../index';
+import { Input } from '../index';
 
 export default function CreatePostModal({ visible, onClose, onPostCreated }) {
   const { createPost, loading } = usePosts();
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState('');
   const [tags, setTags] = useState('');
-  const [image, setImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
-  const pickImage = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant camera roll permissions to upload images.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setImage(result.assets[0].uri);
-      }
-    } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
-    }
-  };
-
-  const takePhoto = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant camera permissions to take photos.');
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setImage(result.assets[0].uri);
-      }
-    } catch (error) {
-      console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo');
-    }
-  };
-
-  const showImagePicker = () => {
-    Alert.alert(
-      'Add Photo',
-      'Choose an option',
-      [
-        { text: 'Camera', onPress: takePhoto },
-        { text: 'Gallery', onPress: pickImage },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
-  };
+  // Use media picker hook
+  const {
+    media,
+    mediaType,
+    showMediaPicker,
+    clearMedia,
+  } = useMediaPicker({
+    aspect: [1, 1],
+    imageQuality: 0.8,
+    videoQuality: 0.5,
+    videoMaxDuration: 60,
+  });
 
   const handleSubmit = async () => {
-    if (!image && !caption.trim()) {
-      Alert.alert('Error', 'Please add an image or caption');
+    if (!media && !caption.trim()) {
+      Alert.alert('Error', 'Please add media or caption');
       return;
     }
 
+    let uploadedPublicId = null;
+    let uploadedResourceType = null;
+
     try {
-      const formData = new FormData();
-      
-      if (image) {
-        const filename = image.split('/').pop();
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        
-        formData.append('image', {
-          uri: image,
-          name: filename,
-          type,
-        });
-      }
-      
-      if (caption.trim()) {
-        formData.append('caption', caption.trim());
-      }
-      
-      if (location.trim()) {
-        formData.append('location', location.trim());
-      }
-      
-      if (tags.trim()) {
-        const tagArray = tags.split(',').map(tag => tag.trim()).filter(Boolean);
-        formData.append('tags', JSON.stringify(tagArray));
+      let mediaUrl = null;
+
+      if (media) {
+        setUploading(true);
+        const result = await uploadMediaToCloudinary(media, mediaType, { folder: 'bk-fitness/posts' });
+        mediaUrl = result.url;
+        uploadedPublicId = result.publicId;
+        uploadedResourceType = mediaType;
       }
 
-      await createPost(formData);
-      
+      const payload = {};
+
+      if (mediaUrl) {
+        // Send postMedia array with mediaUrl and mediaType
+        payload.postMedia = [{
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
+        }];
+      }
+
+      if (caption.trim()) {
+        payload.caption = caption.trim();
+      }
+
+      if (location.trim()) {
+        payload.location = location.trim();
+      }
+
+      if (tags.trim()) {
+        const tagArray = tags.split(',').map(tag => tag.trim()).filter(Boolean);
+        payload.tags = tagArray;
+      }
+
+      await createPost(payload);
+
       // Reset form
       setCaption('');
       setLocation('');
       setTags('');
-      setImage(null);
-      
+      clearMedia();
+
       if (onPostCreated) {
         onPostCreated();
       }
     } catch (error) {
+      console.error('Error creating post:', error);
+
+      // If post creation failed and we uploaded media, delete it from Cloudinary
+      if (uploadedPublicId && uploadedResourceType) {
+        try {
+          await deleteFromCloudinary(uploadedPublicId, uploadedResourceType);
+          console.log('Deleted uploaded media after post creation failure');
+        } catch (deleteError) {
+          console.error('Failed to delete uploaded media:', deleteError);
+        }
+      }
+
       Alert.alert('Error', error.message || 'Failed to create post');
+    } finally {
+      setUploading(false);
     }
   };
 
   const handleClose = () => {
-    if (!loading) {
+    if (!loading && !uploading) {
       setCaption('');
       setLocation('');
       setTags('');
-      setImage(null);
+      clearMedia();
       onClose();
     }
   };
@@ -158,17 +135,17 @@ export default function CreatePostModal({ visible, onClose, onPostCreated }) {
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose} disabled={loading}>
-            <Text style={[styles.cancelButton, loading && styles.disabled]}>
+          <TouchableOpacity onPress={handleClose} disabled={loading || uploading}>
+            <Text style={[styles.cancelButton, (loading || uploading) && styles.disabled]}>
               Cancel
             </Text>
           </TouchableOpacity>
           <Text style={styles.title}>Create Post</Text>
-          <TouchableOpacity onPress={handleSubmit} disabled={loading}>
-            {loading ? (
+          <TouchableOpacity onPress={handleSubmit} disabled={loading || uploading}>
+            {loading || uploading ? (
               <ActivityIndicator size="small" color={Colors.primary} />
             ) : (
-              <Text style={[styles.postButton, loading && styles.disabled]}>
+              <Text style={[styles.postButton, (loading || uploading) && styles.disabled]}>
                 Post
               </Text>
             )}
@@ -176,14 +153,21 @@ export default function CreatePostModal({ visible, onClose, onPostCreated }) {
         </View>
 
         <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
-          {/* Image Section */}
+          {/* Media Section */}
           <View style={styles.imageSection}>
-            {image ? (
+            {media ? (
               <View style={styles.imageContainer}>
-                <Image source={{ uri: image }} style={styles.image} />
+                {mediaType === 'video' ? (
+                  <View style={styles.videoPreview}>
+                    <Ionicons name="videocam" size={Sizes.icon.xxl} color={Colors.text.secondary} />
+                    <Text style={styles.videoPreviewText}>Video Selected</Text>
+                  </View>
+                ) : (
+                  <Image source={{ uri: media }} style={styles.image} />
+                )}
                 <TouchableOpacity
                   style={styles.removeImageButton}
-                  onPress={() => setImage(null)}
+                  onPress={clearMedia}
                 >
                   <Ionicons name="close-circle" size={Sizes.icon.l} color={Colors.error} />
                 </TouchableOpacity>
@@ -191,10 +175,10 @@ export default function CreatePostModal({ visible, onClose, onPostCreated }) {
             ) : (
               <TouchableOpacity
                 style={styles.addImageButton}
-                onPress={showImagePicker}
+                onPress={() => showMediaPicker()}
               >
                 <Ionicons name="camera" size={Sizes.icon.xxl} color={Colors.text.secondary} />
-                <Text style={styles.addImageText}>Add Photo</Text>
+                <Text style={styles.addImageText}>Add Photo/Video</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -303,6 +287,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addImageText: {
+    marginTop: Sizes.m,
+    fontSize: Sizes.fontSize.m,
+    color: Colors.text.secondary,
+  },
+  videoPreview: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: Colors.background.tertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoPreviewText: {
     marginTop: Sizes.m,
     fontSize: Sizes.fontSize.m,
     color: Colors.text.secondary,
