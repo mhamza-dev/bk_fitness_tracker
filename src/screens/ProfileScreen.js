@@ -18,7 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile, useWeight, useMediaPicker } from '../hooks';
-import { uploadMediaToCloudinary } from '../services/uploadService';
+import { uploadMediaToCloudinary } from '../services/cloudinaryService';
 import { Button, Card } from '../components';
 import EditProfileModal from '../components/modals/EditProfileModal';
 import NotificationsModal from '../components/modals/NotificationsModal';
@@ -158,21 +158,22 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleSelectEmoji = async (emoji) => {
-    await updateAvatarEmoji(emoji);
+  const handleSelectSticker = async (sticker) => {
+    await updateAvatarSticker(sticker);
   };
 
-  const updateAvatarEmoji = async (emoji) => {
+  const updateAvatarSticker = async (sticker) => {
     try {
       setUpdatingAvatar(true);
+      // Store sticker URL as avatar image (replaces avatar, not avatarEmoji)
       await updateProfile({
-        avatarEmoji: emoji,
-        avatar: undefined, // Clear image if emoji is set
+        avatar: sticker.url,
+        avatarEmoji: undefined, // Clear emoji if sticker is set
       });
       await fetchProfile();
       Alert.alert('Success', 'Profile picture updated successfully!');
     } catch (error) {
-      console.error('Error updating avatar emoji:', error);
+      console.error('Error updating avatar sticker:', error);
       Alert.alert('Error', error.message || 'Failed to update profile picture');
     } finally {
       setUpdatingAvatar(false);
@@ -458,7 +459,7 @@ export default function ProfileScreen() {
         onClose={() => setShowUpdatePicture(false)}
         onTakePhoto={handleTakePhoto}
         onChooseFromGallery={handleChooseFromGallery}
-        onSelectEmoji={handleSelectEmoji}
+        onSelectSticker={handleSelectSticker}
         uploading={updatingAvatar}
       />
     </View>

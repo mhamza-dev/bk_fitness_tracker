@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { usePosts, useMediaPicker } from '../../hooks';
-import { uploadMediaToCloudinary, deleteFromCloudinary } from '../../services/uploadService';
+import { uploadMediaToCloudinary, deleteFromCloudinary } from '../../services/cloudinaryService';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../../styles';
 import { Input } from '../index';
 

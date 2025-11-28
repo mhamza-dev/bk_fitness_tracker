@@ -1,6 +1,6 @@
 /**
  * Update Profile Picture Modal
- * Bottom modal for updating profile picture with camera, gallery, or emoji options
+ * Bottom modal for updating profile picture with camera, gallery, or sticker options
  */
 
 import React, { useState } from 'react';
@@ -13,17 +13,16 @@ import {
     Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Modal } from '../index';
+import Modal from '../Modal';
+import StickerPicker from '../StickerPicker';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../../styles';
-
-const EMOJI_AVATARS = ['💪', '🏃‍♂️', '🏋️‍♀️', '🚴‍♂️', '🥦', '🔥'];
 
 export default function UpdateProfilePictureModal({
     visible,
     onClose,
     onTakePhoto,
     onChooseFromGallery,
-    onSelectEmoji,
+    onSelectSticker,
     uploading,
 }) {
     return (
@@ -31,7 +30,7 @@ export default function UpdateProfilePictureModal({
             visible={visible}
             onClose={onClose}
             title="Update Profile Picture"
-            maxHeight="70%"
+            maxHeight="100%"
         >
             <View style={styles.container}>
                 {/* Media Options */}
@@ -66,24 +65,18 @@ export default function UpdateProfilePictureModal({
                     </TouchableOpacity>
                 </View>
 
-                {/* Emoji Selection */}
+                {/* Sticker Selection */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Or Choose an Emoji</Text>
-                    <View style={styles.emojiContainer}>
-                        {EMOJI_AVATARS.map((emoji) => (
-                            <TouchableOpacity
-                                key={emoji}
-                                style={styles.emojiOption}
-                                onPress={() => {
-                                    onSelectEmoji(emoji);
-                                    onClose();
-                                }}
-                                disabled={uploading}
-                            >
-                                <Text style={styles.emojiText}>{emoji}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <Text style={styles.sectionTitle}>Or Choose a Sticker</Text>
+                    <StickerPicker
+                        onSelectSticker={(sticker) => {
+                            if (onSelectSticker) {
+                                onSelectSticker(sticker);
+                            }
+                            onClose();
+                        }}
+                        disabled={uploading}
+                    />
                 </View>
             </View>
         </Modal>
@@ -128,24 +121,6 @@ const styles = StyleSheet.create({
     },
     loader: {
         marginLeft: Sizes.m,
-    },
-    emojiContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: Sizes.m,
-    },
-    emojiOption: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: Colors.background.tertiary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 2,
-        borderColor: Colors.border.light,
-    },
-    emojiText: {
-        fontSize: 30,
     },
 });
 

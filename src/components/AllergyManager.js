@@ -12,7 +12,8 @@ import {
     Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Input, Button } from './index';
+import Input from './Input';
+import Button from './Button';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../styles';
 import { ALLERGY_SEVERITIES } from '../constants/profileConstants';
 

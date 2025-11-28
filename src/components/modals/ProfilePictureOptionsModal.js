@@ -12,7 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Modal } from '../index';
+import Modal from '../Modal';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../../styles';
 
 export default function ProfilePictureOptionsModal({

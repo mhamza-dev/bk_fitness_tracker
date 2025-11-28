@@ -1,12 +1,14 @@
 /**
- * Upload Service
- * Handles image and video uploads to Cloudinary
+ * Cloudinary Service
+ * Handles image and video uploads, deletions, and resource fetching from Cloudinary
  */
 
 import 'react-native-url-polyfill/auto';
 
 const CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+const API_KEY = process.env.EXPO_PUBLIC_CLOUDINARY_API_KEY;
+const API_SECRET = process.env.EXPO_PUBLIC_CLOUDINARY_API_SECRET;
 const CLOUDINARY_IMAGE_UPLOAD_URL = CLOUD_NAME
     ? `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`
     : null;
@@ -15,6 +17,9 @@ const CLOUDINARY_VIDEO_UPLOAD_URL = CLOUD_NAME
     : null;
 const CLOUDINARY_DELETE_URL = CLOUD_NAME
     ? `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/resources`
+    : null;
+const CLOUDINARY_RESOURCES_BY_FOLDER_URL = CLOUD_NAME
+    ? `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/resources/by_asset_folder`
     : null;
 
 /**
@@ -174,11 +179,118 @@ export const deleteFromCloudinary = async (publicId, resourceType = 'image') => 
     }
 };
 
+/**
+ * Fetch resources (images) from a Cloudinary folder using asset_folder API
+ * 
+ * @param {string} folder - Folder path in Cloudinary (e.g., 'bk-fitness/stickers')
+ * @param {Object} options - Optional parameters (max_results, etc.)
+ * @returns {Promise<Array>} - Array of sticker objects with { id, url, name, category }
+ */
+export const fetchResourcesFromFolder = async (folder = 'bk-fitness/stickers', options = {}) => {
+    if (!CLOUD_NAME) {
+        throw new Error(
+            'Cloudinary is not configured. Please set EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME.'
+        );
+    }
+
+    if (!CLOUDINARY_RESOURCES_BY_FOLDER_URL) {
+        throw new Error('Cloudinary resources by folder URL is not configured.');
+    }
+
+    try {
+        // Helper function to create authenticated fetch options
+        const createFetchOptions = () => {
+            const fetchOptions = {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            };
+
+            if (API_KEY && API_SECRET) {
+                const credentials = `${API_KEY}:${API_SECRET}`;
+                let base64Credentials = '';
+                if (typeof btoa !== 'undefined') {
+                    base64Credentials = btoa(credentials);
+                } else {
+                    // Manual base64 encoding for React Native
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+                    let result = '';
+                    let i = 0;
+                    while (i < credentials.length) {
+                        const a = credentials.charCodeAt(i++);
+                        const b = i < credentials.length ? credentials.charCodeAt(i++) : 0;
+                        const c = i < credentials.length ? credentials.charCodeAt(i++) : 0;
+                        const bitmap = (a << 16) | (b << 8) | c;
+                        result += chars.charAt((bitmap >> 18) & 63);
+                        result += chars.charAt((bitmap >> 12) & 63);
+                        result += i - 2 < credentials.length ? chars.charAt((bitmap >> 6) & 63) : '=';
+                        result += i - 1 < credentials.length ? chars.charAt(bitmap & 63) : '=';
+                    }
+                    base64Credentials = result;
+                }
+                if (base64Credentials) {
+                    fetchOptions.headers['Authorization'] = `Basic ${base64Credentials}`;
+                }
+            }
+            return fetchOptions;
+        };
+
+        // Use asset_folder API (for dynamic folder mode)
+        const params = new URLSearchParams({
+            asset_folder: folder,
+            max_results: options.maxResults || 500,
+        });
+        const url = `${CLOUDINARY_RESOURCES_BY_FOLDER_URL}?${params.toString()}`;
+
+        const fetchOptions = createFetchOptions();
+        const response = await fetch(url, fetchOptions);
+        const json = await response.json();
+
+        if (!response.ok) {
+            let errorMessage = json?.error?.message || json?.message || 'Failed to fetch resources from Cloudinary.';
+            if (response.status === 401 || response.status === 403) {
+                errorMessage += ' Authentication required.';
+            }
+            throw new Error(errorMessage);
+        }
+
+        const resources = json.resources || [];
+
+        if (resources.length === 0) {
+            throw new Error(`No resources found in folder "${folder}"`);
+        }
+
+        const stickers = resources.map((resource, index) => {
+            // Extract name from public_id (remove folder path and extension)
+            const publicIdParts = resource.public_id.split('/');
+            const fileName = publicIdParts[publicIdParts.length - 1];
+            const name = fileName
+                .replace(/[-_]/g, ' ')
+                .replace(/\.[^/.]+$/, '') // Remove extension
+                .replace(/\b\w/g, l => l.toUpperCase()); // Capitalize words
+
+            return {
+                id: resource.public_id || `sticker-${index + 1}`,
+                url: resource.secure_url || resource.url,
+                name: name || `Sticker ${index + 1}`,
+                category: 'fitness',
+            };
+        });
+
+        return stickers;
+    } catch (error) {
+        console.error('Cloudinary fetch resources error:', error);
+        throw error;
+    }
+};
+
 export default {
     uploadMediaToCloudinary,
     uploadImageToCloudinary,
     uploadVideoToCloudinary,
     deleteFromCloudinary,
+    fetchResourcesFromFolder,
 };
 
 

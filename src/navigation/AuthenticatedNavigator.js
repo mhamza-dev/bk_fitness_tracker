@@ -23,7 +23,6 @@ const MainTabs = () => {
             screenOptions={{
                 headerStyle: {
                     backgroundColor: Colors.navigation.headerBackground,
-                    paddingBottom: Sizes.s,
                     borderBottomWidth: 1,
                     borderBottomColor: Colors.border.light,
                 },
@@ -32,6 +31,9 @@ const MainTabs = () => {
                     fontWeight: FontWeight.bold,
                     color: Colors.navigation.headerText,
                     fontSize: Sizes.fontSize.xl,
+                },
+                headerTitleContainerStyle: {
+                    paddingBottom: Sizes.s,
                 },
                 headerLeft: () => <HeaderLogo logoStyle={{ width: Sizes.image.xxxs, height: Sizes.image.xxxs }} />,
                 headerLeftContainerStyle: {
@@ -122,8 +124,9 @@ const AuthenticatedNavigator = () => {
         }
     };
 
-    // Show loading while checking profile
-    if (checkingProfile || loading) {
+    // Show loading only during initial profile check (not during updates)
+    // This prevents navigation reset when profile is updated
+    if (checkingProfile || (loading && !profile)) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={Colors.primary} />

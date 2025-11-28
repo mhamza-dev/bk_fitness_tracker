@@ -18,6 +18,7 @@ export { default as PostCard } from './PostCard';
 export { default as Modal } from './Modal';
 export { default as AllergyManager } from './AllergyManager';
 export { default as PhysicalIssueManager } from './PhysicalIssueManager';
+export { default as StickerPicker } from './StickerPicker';
 export { default as ViewProfilePictureModal } from './modals/ViewProfilePictureModal';
 export { default as ProfilePictureOptionsModal } from './modals/ProfilePictureOptionsModal';
 export { default as UpdateProfilePictureModal } from './modals/UpdateProfilePictureModal';
