@@ -27,16 +27,16 @@ export default function LoginScreen({ navigation }) {
         originalError: error.originalError,
       });
 
-      // Handle specific error cases
-      let errorMessage = 'Login failed. Please check your credentials.';
+      // Get error message from server if available, otherwise use generic message
+      let errorMessage = error.message || 'Login failed. Please try again.';
 
-      // Provide more helpful message for network errors
+      // For network errors, use the specific network error message
       if (error.isNetworkError) {
-        errorMessage = error.message;
+        errorMessage = error.message || 'Unable to connect to server. Please check your internet connection.';
       }
 
-      // Set field errors if available
-      if (error.message?.includes('email') || error.message?.includes('password')) {
+      // Set field errors for credential-specific errors
+      if (error.message?.toLowerCase().includes('email') || error.message?.toLowerCase().includes('password') || error.message?.toLowerCase().includes('credential')) {
         setFieldError('password', errorMessage);
       }
     } finally {

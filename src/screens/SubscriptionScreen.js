@@ -177,7 +177,6 @@ export default function SubscriptionScreen({ navigation, route }) {
                         </View>
                     ))}
                 </View>
-                {console.log(plans)}
                 {loadingPlans ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={Colors.primary} />
