@@ -28,7 +28,7 @@ export default function LoginScreen({ navigation }) {
       });
 
       // Handle specific error cases
-      let errorMessage = error.message || 'Login failed. Please check your credentials.';
+      let errorMessage = 'Login failed. Please check your credentials.';
 
       // Provide more helpful message for network errors
       if (error.isNetworkError) {
@@ -38,9 +38,6 @@ export default function LoginScreen({ navigation }) {
       // Set field errors if available
       if (error.message?.includes('email') || error.message?.includes('password')) {
         setFieldError('password', errorMessage);
-      } else {
-        // Show general error alert
-        Alert.alert('Login Failed', errorMessage);
       }
     } finally {
       setSubmitting(false);

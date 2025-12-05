@@ -16,14 +16,18 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePosts, useMediaPicker } from '../../hooks';
 import { uploadMediaToCloudinary, deleteFromCloudinary } from '../../services/cloudinaryService';
+import { useSubscriptionStore } from '../../stores';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../../styles';
 import { Input } from '../index';
 
 export default function CreatePostModal({ visible, onClose, onPostCreated }) {
+  const navigation = useNavigation();
   const { createPost, loading } = usePosts();
+  const { hasActiveSubscription } = useSubscriptionStore();
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState('');
   const [tags, setTags] = useState('');
@@ -43,6 +47,13 @@ export default function CreatePostModal({ visible, onClose, onPostCreated }) {
   });
 
   const handleSubmit = async () => {
+    // Check subscription before allowing post creation
+    if (!hasActiveSubscription()) {
+      onClose();
+      navigation.navigate('Subscription', { feature: 'create posts' });
+      return;
+    }
+
     if (!media && !caption.trim()) {
       Alert.alert('Error', 'Please add media or caption');
       return;

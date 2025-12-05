@@ -22,14 +22,21 @@ import PostCard from '../components/PostCard';
 import CreatePostModal from '../components/modals/CreatePostModal';
 import CommentsModal from '../components/modals/CommentsModal';
 import { useAuth } from '../contexts';
+import { useSubscriptionStore } from '../stores';
 
-export default function FeedScreen() {
+export default function FeedScreen({ navigation }) {
   const { user, logout } = useAuth();
   const { posts, loading, error, hasMore, getFeed, resetPagination, deletePost } = usePosts();
+  const { hasActiveSubscription, fetchSubscription } = useSubscriptionStore();
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [showComments, setShowComments] = useState(false);
+
+  useEffect(() => {
+    // Fetch subscription status on mount
+    fetchSubscription();
+  }, []);
 
   useEffect(() => {
     loadFeed(true);
@@ -99,8 +106,17 @@ export default function FeedScreen() {
   };
 
   const handleCommentPress = (post) => {
+    // Check subscription before allowing comment
+    if (!hasActiveSubscription()) {
+      navigation.navigate('Subscription', { feature: 'comment on posts' });
+      return;
+    }
     setSelectedPost(post);
     setShowComments(true);
+  };
+
+  const handleShowSubscriptionModal = (feature) => {
+    navigation.navigate('Subscription', { feature });
   };
 
   const handleDeletePost = async (postId) => {
@@ -119,6 +135,7 @@ export default function FeedScreen() {
       onLike={handleLikePost}
       onComment={() => handleCommentPress(item)}
       onDelete={handleDeletePost}
+      onShowSubscriptionModal={handleShowSubscriptionModal}
     />
   );
 
@@ -183,7 +200,14 @@ export default function FeedScreen() {
       {/* Floating Action Button */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setShowCreateModal(true)}
+        onPress={() => {
+          // Check subscription before allowing post creation
+          if (!hasActiveSubscription()) {
+            navigation.navigate('Subscription', { feature: 'create posts' });
+            return;
+          }
+          setShowCreateModal(true);
+        }}
         activeOpacity={0.8}
       >
         <Ionicons name="add" size={Sizes.icon.xl} color={Colors.text.inverse} />

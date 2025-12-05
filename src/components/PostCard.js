@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../styles';
 import { useLikes } from '../hooks';
 import { useAuth } from '../contexts';
+import { useSubscriptionStore } from '../stores';
 
 export default function PostCard({
   post,
@@ -23,9 +24,11 @@ export default function PostCard({
   onLike,
   onComment,
   onDelete,
+  onShowSubscriptionModal,
 }) {
   const { likePost, unlikePost } = useLikes();
   const { user } = useAuth();
+  const { hasActiveSubscription } = useSubscriptionStore();
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likesCount || 0);
   const [commentCount, setCommentCount] = useState(post.commentsCount || 0);
@@ -41,6 +44,14 @@ export default function PostCard({
   }, [post, currentUserId]);
 
   const handleLike = async () => {
+    // Check subscription before allowing like
+    if (!hasActiveSubscription()) {
+      if (onShowSubscriptionModal) {
+        onShowSubscriptionModal('like posts');
+      }
+      return;
+    }
+
     const newLikedState = !isLiked;
     const newLikeCount = newLikedState ? likeCount + 1 : likeCount - 1;
 
@@ -62,6 +73,19 @@ export default function PostCard({
       setIsLiked(!newLikedState);
       setLikeCount(likeCount);
       Alert.alert('Error', 'Failed to update like');
+    }
+  };
+
+  const handleComment = () => {
+    // Check subscription before allowing comment
+    if (!hasActiveSubscription()) {
+      if (onShowSubscriptionModal) {
+        onShowSubscriptionModal('comment on posts');
+      }
+      return;
+    }
+    if (onComment) {
+      onComment();
     }
   };
 
@@ -154,7 +178,7 @@ export default function PostCard({
               color={isLiked ? Colors.error : Colors.text.primary}
             />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onComment} style={styles.actionButton}>
+          <TouchableOpacity onPress={handleComment} style={styles.actionButton}>
             <Ionicons
               name="chatbubble-outline"
               size={Sizes.icon.l}
@@ -191,7 +215,7 @@ export default function PostCard({
 
       {/* Comments Count */}
       {commentCount > 0 && (
-        <TouchableOpacity onPress={onComment} style={styles.commentsButton}>
+        <TouchableOpacity onPress={handleComment} style={styles.commentsButton}>
           <Text style={styles.commentsText}>
             View all {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
           </Text>

@@ -7,4 +7,5 @@ export { useProfileStore } from './useProfileStore';
 export { useNotificationPreferencesStore } from './useNotificationPreferencesStore';
 export { useWeightStore } from './useWeightStore';
 export { useStickerStore } from './useStickerStore';
+export { useSubscriptionStore } from './useSubscriptionStore';
 

@@ -9,6 +9,7 @@ import HomeScreen from '../screens/HomeScreen';
 import StepTrackerScreen from '../screens/StepTrackerScreen';
 import FeedScreen from '../screens/FeedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
 import OnboardingNavigator from './OnboardingNavigator';
 import HeaderLogo from '../components/HeaderLogo';
 import { Colors, Sizes, FontWeight } from '../styles';
@@ -147,6 +148,14 @@ const AuthenticatedNavigator = () => {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen
+                name="Subscription"
+                component={SubscriptionScreen}
+                options={{
+                    headerShown: false,
+                    presentation: 'card',
+                }}
+            />
         </Stack.Navigator>
     );
 };

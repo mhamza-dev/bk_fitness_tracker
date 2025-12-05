@@ -676,6 +676,27 @@ export const notificationPreferencesAPI = {
     },
 };
 
+/**
+ * Subscription API
+ */
+export const subscriptionAPI = {
+    getSubscription: async () => {
+        return await apiClient.get('/subscriptions/current');
+    },
+
+    getPlans: async () => {
+        return await apiClient.get('/subscriptions/plans');
+    },
+
+    purchaseSubscription: async (planId) => {
+        return await apiClient.post('/subscriptions/purchase', { planId });
+    },
+
+    cancelSubscription: async () => {
+        return await apiClient.post('/subscriptions/cancel');
+    },
+};
+
 export default {
     apiClient,
     getAuthToken,
@@ -695,4 +716,5 @@ export default {
     likesAPI,
     followAPI,
     notificationPreferencesAPI,
+    subscriptionAPI,
 };

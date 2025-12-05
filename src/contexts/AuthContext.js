@@ -43,9 +43,7 @@ export const AuthProvider = ({ children }) => {
           const userData = await authAPI.getCurrentUser();
           setUser(userData.user || userData);
           setIsAuthenticated(true);
-        } catch (error) {
-          // Token is invalid, remove it
-          console.error('Token validation failed:', error);
+        } catch (_error) {
           await removeAuthToken();
           setIsAuthenticated(false);
           setUser(null);

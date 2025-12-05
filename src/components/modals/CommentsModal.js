@@ -16,16 +16,20 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useComments, useLikes } from '../../hooks';
 import { useAuth } from '../../contexts';
+import { useSubscriptionStore } from '../../stores';
 import { Colors, Sizes, FontWeight, BorderRadius } from '../../styles';
 import { Button } from '../index';
 
 export default function CommentsModal({ visible, post, onClose }) {
+  const navigation = useNavigation();
   const { user } = useAuth();
   const { comments, loading, getPostComments, createComment } = useComments();
   const { likeComment, unlikeComment } = useLikes();
+  const { hasActiveSubscription } = useSubscriptionStore();
   const [commentText, setCommentText] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -47,6 +51,13 @@ export default function CommentsModal({ visible, post, onClose }) {
   const handleSubmit = async () => {
     if (!commentText.trim() || !post) return;
 
+    // Check subscription before allowing comment
+    if (!hasActiveSubscription()) {
+      onClose();
+      navigation.navigate('Subscription', { feature: 'comment on posts' });
+      return;
+    }
+
     setSending(true);
     try {
       await createComment({
@@ -62,6 +73,13 @@ export default function CommentsModal({ visible, post, onClose }) {
   };
 
   const handleLikeComment = async (commentId, isLiked) => {
+    // Check subscription before allowing like
+    if (!hasActiveSubscription()) {
+      onClose();
+      navigation.navigate('Subscription', { feature: 'like posts' });
+      return;
+    }
+
     try {
       if (isLiked) {
         await unlikeComment(commentId);
@@ -201,7 +219,7 @@ function formatTimestamp(date) {
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
   if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-  
+
   return commentDate.toLocaleDateString();
 }
 
